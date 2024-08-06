@@ -2,6 +2,6 @@ Original plugin base was made by `HUNjozsi`
 In respect of this their name remains in the info.json
 
 ## MOD MAKERS
-- Currently all mods are put in `IntoTheRadius2/Content/Paks/Mods` regardless of how you pack it, 
-- Ignore `Invalid Installer` Errors for now, 
-- You DO NEED UE2SS, I reccomend using [This Version](https://www.nexusmods.com/intotheradius2/mods/20/)
+- Mods underneath a folder titled `LogicMods` gets put into `IntoTheRadius2/Content/Paks/LogicMods`
+- Pak mods are not seperated by folder and are put into `IntoTheRadius2/Content/Paks/Mods`
+- Lua Mods are *not* fully working yet, and require to be packaged as `LuaMods/ModName/Scripts/main.lua` for the time being in your zips
