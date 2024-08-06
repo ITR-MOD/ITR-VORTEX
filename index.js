@@ -54,7 +54,7 @@ async function copyFile(source, destination) {
 async function prepareForModding(discovery) {
 
 	await fs.ensureDirWritableAsync(path.join(pakDir, "Mods"));
-
+	await fs.ensureDirWritableAsync(path.join(pakDir, "LogicMods"));
 
 	await fs.ensureDirWritableAsync(binDir);
 
