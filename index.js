@@ -127,12 +127,36 @@ function installContent(files) {
 		idx = modFolder.indexOf(path.basename(modFolder));
 	}
 
+
+	// check if ./ue4ss/UE4SS.dll exists
+	if (files.some(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss')) {
+		instructions.push(
+			{
+				type: 'copy',
+				source: files.find(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss'),
+				destination: path.join('UE4SS.dll'),
+			},
+			{
+				type: 'copy',
+				source: files.find(f => path.basename(f) === 'UE4SS-settings.ini' && path.dirname(f) === 'ue4ss'),
+				destination: path.join('UE4SS-settings.ini'),
+			},
+			{
+				type: 'copy',
+				source: files.find(f => path.basename(f) === 'Mods' && path.dirname(f) === 'ue4ss'),
+				destination: path.join('LuaMods'),
+			}
+			// TODO: Automatically patch the UE4SS-settings.ini file to include the mod folder
+		);
+		return Promise.resolve({ instructions });
+	}
+
 	for (let f of files) {
 		// Only copy files that are among the valid extensions.
 		// Fixes the "not part of the archive" error.
 		if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
 
-		if ('.pak'  === path.extname(f).toLowerCase() ||
+		if ('.pak' === path.extname(f).toLowerCase() ||
 			'.ucas' === path.extname(f).toLowerCase() ||
 			'.utoc' === path.extname(f).toLowerCase()) {
 			let parentFolder = path.basename(path.dirname(f));
