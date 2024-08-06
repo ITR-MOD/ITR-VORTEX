@@ -120,14 +120,6 @@ function testSupportedContent(files, gameId) {
 function installContent(files) {
 	let instructions = [];
 
-	const isLuaMod = files.some(f => path.basename(f) === 'main.lua');
-	let idx;
-	if (isLuaMod) {
-		const modFolder = files.find(f => path.basename(f) === 'Mods')
-		idx = modFolder.indexOf(path.basename(modFolder));
-	}
-
-
 	// check if ./ue4ss/UE4SS.dll exists
 	if (files.some(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss')) {
 		instructions.push(
@@ -150,6 +142,33 @@ function installContent(files) {
 		);
 		return Promise.resolve({ instructions });
 	}
+
+	// Check if it's a Lua mod by checking `./Scripts/main.lua` and `./enabled.txt`, if so, move all files to `LuaMods/modFolder`
+	let luaMainFile = files.find(
+		f => path.basename(f) === 'main.lua' &&
+			path.basename(path.dirname(f)).toLowerCase() === 'scripts' &&
+			path.basename(path.dirname(path.dirname(path.dirname(f)))) === 'mods'
+	);
+	if (luaMainFile) {
+		const modFolder = path.dirname(path.dirname(luaMainFile));
+		const enabledTxt = path.join(modFolder, 'enabled.txt');
+
+		if (files.includes(enabledTxt)) {
+			instructions.push({
+				type: 'copy',
+				source: path.join(modFolder, 'Scripts'),
+				destination: path.join("LuaMods", modFolder, 'Scripts'),
+			},
+			{
+				type: 'copy',
+				source: enabledTxt,
+				destination: path.join("LuaMods", modFolder, 'enabled.txt'),
+			});
+		
+			return Promise.resolve({ instructions });
+		}
+	}
+
 
 	for (let f of files) {
 		// Only copy files that are among the valid extensions.
@@ -177,14 +196,7 @@ function installContent(files) {
 				});
 			}
 		} else {
-			// Lua mod
-			if (!isLuaMod || idx == null) continue;
-
-			instructions.push({
-				type: 'copy',
-				source: f,
-				destination: path.join("LuaMods", path.join(f.substr(idx))),
-			});
+			// TODO: LUA MODS
 		}
 	}
 
