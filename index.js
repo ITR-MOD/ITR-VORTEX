@@ -1,4 +1,4 @@
-// Nexus Mods domain for the game. e.g. nexusmods.com/bloodstainedritualofthenight
+// Nexus Mods domain for the game. e.g. nexusmods.com/intotheradius2
 const GAME_ID = 'intotheradius2';
 const STEAMAPP_ID = '2307350';
 const path = require('path');
@@ -7,6 +7,9 @@ const { fs, log, util } = require('vortex-api');
 // Valid extensions for mods
 const VALID_EXTENSIONS = ['.pak', '.utac', '.ucas', '.lua'];
 
+const pakDir = path.join(discovery.path, 'IntoTheRadius2', 'Content', 'Paks');
+const modDir = path.join(discovery.path, 'IntoTheRadius2', 'Content', 'Paks', 'Mods');
+const binariesDir = path.join(discovery.path, 'IntoTheRadius2', 'Binaries', 'Win64');
 function findGame() {
 	return util.GameStoreHelper.findByAppId(STEAMAPP_ID)
 		.then(game => game.gamePath);
@@ -19,7 +22,7 @@ function main(context) {
 		mergeMods: true,
 		queryPath: findGame,
 		supportedTools: [],
-		queryModPath: () => 'IntoTheRadius2/Content/Paks/Mods',
+		queryModPath: () => 'IntoTheRadius2/Content/Paks',
 		logo: 'assets/gameart.jpg',
 		executable: () => 'IntoTheRadius2.exe',
 		requiredFiles: [
@@ -50,17 +53,16 @@ async function copyFile(source, destination) {
 }
 
 async function prepareForModding(discovery) {
-	const modDir = path.join(discovery.path, 'IntoTheRadius2', 'Content', 'Paks', 'Mods');
+	
 	await fs.ensureDirWritableAsync(modDir);
 
-	const binariesDir = path.join(discovery.path, 'IntoTheRadius2', 'Binaries', 'Win64');
+	
 	await fs.ensureDirWritableAsync(binariesDir);
 
 	// Copy over required UE4SS files
 	const filesToCopy = [
 		{ src: path.join(__dirname, 'assets', 'dwmapi.dll'), dest: path.join(binariesDir, 'dwmapi.dll') },
-		{ src: path.join(__dirname, 'assets', 'UE4SS-settings.ini'), dest: path.join(binariesDir, 'UE4SS-settings.ini') },
-		{ src: path.join(__dirname, 'assets', 'UE4SS.dll'), dest: path.join(binariesDir, 'UE4SS.dll') }
+		{ src: path.join(__dirname, 'assets', 'override.txt'), dest: path.join(binariesDir, 'override.txt') },
 	];
 
 	for (const file of filesToCopy) {
