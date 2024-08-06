@@ -1,8 +1,9 @@
 const path = require('path');
 const { fs, log, util, handlers } = require('vortex-api');
 
-const GAME_ID = 'intotheradius2';
-const STEAMAPP_ID = '2307350';
+const GAME_NEXUS_ID = 'intotheradius2';
+const GAME_STEAM_ID = '2307350';
+const GAME_NAME = 'Into the Radius 2'
 const VALID_EXTENSIONS = ['.pak', '.utac', '.ucas', '.lua'];
 
 var pakDir = path.join('IntoTheRadius2', 'Content', 'Paks');
@@ -15,8 +16,8 @@ function findGame() {
 
 function main(context) {
 	context.registerGame({
-		id: GAME_ID,
-		name: 'Into the Radius 2',
+		id: GAME_NEXUS_ID,
+		name: GAME_NAME,
 		mergeMods: true,
 		queryPath: findGame,
 		supportedTools: [],
@@ -28,10 +29,10 @@ function main(context) {
 		],
 		setup: prepareForModding,
 		environment: {
-			SteamAPPId: STEAMAPP_ID,
+			SteamAPPId: GAME_STEAM_ID,
 		},
 		details: {
-			steamAppId: STEAMAPP_ID,
+			steamAppId: GAME_STEAM_ID,
 		},
 	});
 	context.registerInstaller('intotheradius2-mod', 25, testSupportedContent, installContent);
@@ -55,7 +56,6 @@ async function prepareForModding(discovery) {
 
 	await fs.ensureDirWritableAsync(path.join(pakDir, "Mods"));
 	await fs.ensureDirWritableAsync(path.join(pakDir, "LogicMods"));
-
 	await fs.ensureDirWritableAsync(binDir);
 
 	// Copy over required UE4SS files
@@ -71,41 +71,113 @@ async function prepareForModding(discovery) {
 
 
 function testSupportedContent(files, gameId) {
-	// Ensure the mod is for the correct game and contains valid files
-	const supported = gameId === GAME_ID &&
-		(files.some(file => VALID_EXTENSIONS.includes(path.extname(file).toLowerCase())) ||
-			files.some(file => path.basename(file).toLowerCase() === 'ue4ss.dll'));
+	if (GAME_NEXUS_ID !== gameId) {
+		return Promise.resolve({
+			supported: false,
+			requiredFiles: [],
+		});
+	}
+
+	let isUE4SS = files.some(file => path.basename(file).toLowerCase() === 'ue4ss')
+
+	// Check if UE4SS Lua mod:
+	// Both LuaMods/*/Scripts/main.lua and LuaMods/*/enabled.txt must exist
+	let isLuaMod = false;
+	let luaMainFile = files.find(
+		f => path.basename(f) === 'main.lua' &&
+			path.basename(path.dirname(f)) === 'Scripts' &&
+			path.basename(path.dirname(path.dirname(f))) !== 'LuaMods' &&
+			path.basename(path.dirname(path.dirname(path.dirname(f)))) === 'LuaMods'
+	);
+	if (luaMainFile) {
+		const modFolder = path.dirname(path.dirname(luaMainFile));
+		const enabledTxt = path.join(modFolder, 'enabled.txt');
+		isLuaMod = files.includes(enabledTxt);
+	}
+
+	// If a file ends with .pak, it's either a BP or pak mod.
+	let isPakMod = files.some(f => path.extname(f).toLowerCase() === '.pak');
 
 	return Promise.resolve({
-		supported,
+		supported: isUE4SS || isLuaMod || isPakMod,
 		requiredFiles: [],
 	});
 }
 
+
+// For UE4SS Lua mods / UE4SS:
+// Move all files (that are not .pak files) from the directory where the Mods folder is located in, to IntoTheRadius2\Binaries\Win64
+// For UE4SS BP mods:
+// Move all .pak files that are located inside a LogicMods folder, to IntoTheRadius2\Content\Paks\LogicMods
+// For Pak mods:
+// Move all .pak files that are not located inside a Logic Mods folder, to IntoTheRadius2\Content\Paks
 function installContent(files) {
-	// Determine if UE4SS.dll is in any of the files' root directories
-	const hasUE4SSDLL = files.some(file => {
-		const fileName = path.basename(file).toLowerCase();
-		return fileName === 'ue4ss.dll' && path.dirname(file) === '.';
-	});
+	let instructions = [];
 
-	// Set the installation directory based on the presence of UE4SS.dll
-	const destinationDir = hasUE4SSDLL ? "./" : "/Mods";
+	let isUE4SS = files.some(file => file.toLowerCase() === 'ue4ss.dll' || file.toLowerCase().startsWith('ue4ss/'));
+	log('isUE4SS:', isUE4SS);
+	for (let f of files) {
+		// Only copy files that are among the valid extensions.
+		// Fixes the "not part of the archive" error.
+		if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
 
-	// Create installation instructions
-	const instructions = files.map(file => {
-		// Remove leading directories from file paths, keep only the file name
-		const fileName = path.basename(file);
-		return {
-			type: 'copy',
-			source: file,
-			destination: path.join(destinationDir, fileName),
-		};
-	});
+		// Handle UE4SS files
+		if (isUE4SS) {
+			// copy ./ue4ss.dll or ue4ss/ue4ss.dll to pakDir
+			if (path.basename(f).toLowerCase() === 'ue4ss.dll' || path.basename(f).toLowerCase() === 'ue4ss-settings.ini') {
+				instructions.push({
+					type: 'copy',
+					source: f,
+					destination: path.join(pakDir, path.basename(f)),
+				});
+			} else if (path.basename(f) === 'Mods') {
+				instructions.push({
+					type: 'copy',
+					source: f,
+					destination: path.join(pakDir, 'LuaMods'),
+				});
+			}
+		} else {
+			// Handle PAK
+			if ('.pak' === path.extname(f).toLowerCase() || 
+				'.ucas' === path.extname(f).toLowerCase() || 
+				'.utoc' === path.extname(f).toLowerCase()) {
+				// if the pak is in a LogicMods folder, copy it to the LogicMods folder
+				if (path.basename(path.dirname(f)) === 'LogicMods' ||  
+					path.basename(path.dirname(path.dirname(f))) === 'LogicMods') {
+					instructions.push({
+						type: 'copy',
+						source: f,
+						destination: path.join("LogicMods", path.basename(f)),
+					});
+				} else {
+					// otherwise, copy it to the Paks folder
+					instructions.push({
+						type: 'copy',
+						source: f,
+						destination: path.join("Mods", path.basename(f)),
+					});
+				}
+			} else {
+				// Lua mod
+				if (path.basename(f) === 'main.lua' && 
+					(path.basename(path.dirname(f)) === 'Scripts' || 
+					path.basename(path.dirname(f)) === 'scripts')) {
+					instructions.push({
+						type: 'copy',
+						source: f,
+						destination: path.join(pakDir, "LuaMods", path.basename(f)),
+					});
+				}
+			}
+		}
+	}
+
+	// Add console logging
+	log('installContent instructions:', instructions);
 
 	return Promise.resolve({ instructions });
 }
-
 
 module.exports = {
 	default: main,
