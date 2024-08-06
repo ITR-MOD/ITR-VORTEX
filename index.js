@@ -56,6 +56,7 @@ async function prepareForModding(discovery) {
 
 	await fs.ensureDirWritableAsync(path.join(pakDir, "Mods"));
 	await fs.ensureDirWritableAsync(path.join(pakDir, "LogicMods"));
+	await fs.ensureDirWritableAsync(path.join(pakDir, "LuaMods"));
 	await fs.ensureDirWritableAsync(binDir);
 
 	// Copy over required UE4SS files
@@ -87,8 +88,8 @@ function testSupportedContent(files, gameId) {
 	// Both Mods/*/Scripts/main.lua and Mods/*/enabled.txt must exist
 	let luaMainFile = files.find(
 		f => path.basename(f) === 'main.lua' &&
-		path.basename(path.dirname(f)) === 'Scripts' &&
-		path.basename(path.dirname(path.dirname(path.dirname(f)))) === 'Mods'
+			path.basename(path.dirname(f)) === 'Scripts' &&
+			path.basename(path.dirname(path.dirname(path.dirname(f)))) === 'Mods'
 	);
 	if (luaMainFile) {
 		const modFolder = path.dirname(path.dirname(luaMainFile));
@@ -102,7 +103,7 @@ function testSupportedContent(files, gameId) {
 	let isPakMod = files.some(f => path.extname(f).toLowerCase() === '.pak');
 
 	// Special case for UE4SS (it doesn't have the enabled.txt files)
-	let isUE4SS = files.some(f => path.basename(f) === 'UE4SS.dll');
+	let isUE4SS = files.some(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss');
 
 	return Promise.resolve({
 		supported: isUE4SS || isLuaMod || isPakMod,
@@ -131,12 +132,13 @@ function installContent(files) {
 		// Fixes the "not part of the archive" error.
 		if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
 
-		if ('.pak' === path.extname(f).toLowerCase()) {
+		if ('.pak'  === path.extname(f).toLowerCase() ||
+			'.ucas' === path.extname(f).toLowerCase() ||
+			'.utoc' === path.extname(f).toLowerCase()) {
 			let parentFolder = path.basename(path.dirname(f));
 
 			if ('LogicMods' === parentFolder) {
 				// Blueprint mod
-
 				instructions.push({
 					type: 'copy',
 					source: f,
@@ -144,7 +146,6 @@ function installContent(files) {
 				});
 			} else {
 				// Pak mod
-
 				instructions.push({
 					type: 'copy',
 					source: f,
