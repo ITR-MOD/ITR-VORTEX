@@ -69,38 +69,46 @@ async function prepareForModding(discovery) {
 	}
 }
 
-function testSupportedContent(files, gameId) {
-    // Ensure the mod is for the correct game and contains valid files
-    const supported = gameId === GAME_ID &&
-        (files.some(file => VALID_EXTENSIONS.includes(path.extname(file).toLowerCase())) ||
-         files.some(file => path.basename(file).toLowerCase() === 'ue4ss.dll'));
 
-    return Promise.resolve({
-        supported,
-        requiredFiles: [],
-    });
+function testSupportedContent(files, gameId) {
+	// Ensure the mod is for the correct game and contains valid files
+	const supported = gameId === GAME_ID &&
+		(files.some(file => VALID_EXTENSIONS.includes(path.extname(file).toLowerCase())) ||
+			files.some(file => path.basename(file).toLowerCase() === 'ue4ss.dll'));
+
+	return Promise.resolve({
+		supported,
+		requiredFiles: [],
+	});
 }
 
 function installContent(files) {
-    // Determine if UE4SS.dll is in the root
-    const hasUE4SSDLL = files.some(file => path.basename(file).toLowerCase() === 'ue4ss.dll');
-    const destinationDir = hasUE4SSDLL ? pakDir : path.join(pakDir, "Mods");
+	// Determine if UE4SS.dll is in any of the files' root directories
+	const hasUE4SSDLL = files.some(file => {
+		const fileName = path.basename(file).toLowerCase();
+		return fileName === 'ue4ss.dll' && path.dirname(file) === '.';
+	});
 
-    // Create installation instructions
-    const instructions = files.map(file => {
-        return {
-            type: 'copy',
-            source: file,
-            destination: path.join(destinationDir, path.basename(file)),
-        };
-    });
+	// Set the installation directory based on the presence of UE4SS.dll
+	const destinationDir = hasUE4SSDLL ? "./" : "/Mods";
 
-    return Promise.resolve({ instructions });
+	// Create installation instructions
+	const instructions = files.map(file => {
+		// Remove leading directories from file paths, keep only the file name
+		const fileName = path.basename(file);
+		return {
+			type: 'copy',
+			source: file,
+			destination: path.join(destinationDir, fileName),
+		};
+	});
+
+	return Promise.resolve({ instructions });
 }
 
 
 module.exports = {
 	default: main,
 	testSupportedContent,
-    installContent,
+	installContent,
 };
