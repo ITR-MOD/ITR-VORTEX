@@ -1,15 +1,13 @@
-// Nexus Mods domain for the game. e.g. nexusmods.com/intotheradius2
+const path = require('path');
+const { fs, log, util, handlers } = require('vortex-api');
+
 const GAME_ID = 'intotheradius2';
 const STEAMAPP_ID = '2307350';
-const path = require('path');
-const { fs, log, util } = require('vortex-api');
-
-// Valid extensions for mods
 const VALID_EXTENSIONS = ['.pak', '.utac', '.ucas', '.lua'];
 
-const pakDir = path.join(discovery.path, 'IntoTheRadius2', 'Content', 'Paks');
-const modDir = path.join(discovery.path, 'IntoTheRadius2', 'Content', 'Paks', 'Mods');
-const binariesDir = path.join(discovery.path, 'IntoTheRadius2', 'Binaries', 'Win64');
+var pakDir = path.join('IntoTheRadius2', 'Content', 'Paks');
+var binDir = path.join('IntoTheRadius2', 'Binaries', 'Win64');
+
 function findGame() {
 	return util.GameStoreHelper.findByAppId(STEAMAPP_ID)
 		.then(game => game.gamePath);
@@ -36,6 +34,7 @@ function main(context) {
 			steamAppId: STEAMAPP_ID,
 		},
 	});
+	context.registerInstaller('intotheradius2-mod', 25, testSupportedContent, installContent);
 	return true;
 }
 
@@ -53,16 +52,16 @@ async function copyFile(source, destination) {
 }
 
 async function prepareForModding(discovery) {
-	
-	await fs.ensureDirWritableAsync(modDir);
 
-	
-	await fs.ensureDirWritableAsync(binariesDir);
+	await fs.ensureDirWritableAsync(path.join(pakDir, "Mods"));
+
+
+	await fs.ensureDirWritableAsync(binDir);
 
 	// Copy over required UE4SS files
 	const filesToCopy = [
-		{ src: path.join(__dirname, 'assets', 'dwmapi.dll'), dest: path.join(binariesDir, 'dwmapi.dll') },
-		{ src: path.join(__dirname, 'assets', 'override.txt'), dest: path.join(binariesDir, 'override.txt') },
+		{ src: path.join(__dirname, 'assets', 'dwmapi.dll'), dest: path.join(discovery.path, binDir, 'dwmapi.dll') },
+		{ src: path.join(__dirname, 'assets', 'override.txt'), dest: path.join(discovery.path, binDir, 'override.txt') },
 	];
 
 	for (const file of filesToCopy) {
@@ -70,6 +69,38 @@ async function prepareForModding(discovery) {
 	}
 }
 
+function testSupportedContent(files, gameId) {
+    // Ensure the mod is for the correct game and contains valid files
+    const supported = gameId === GAME_ID &&
+        (files.some(file => VALID_EXTENSIONS.includes(path.extname(file).toLowerCase())) ||
+         files.some(file => path.basename(file).toLowerCase() === 'ue4ss.dll'));
+
+    return Promise.resolve({
+        supported,
+        requiredFiles: [],
+    });
+}
+
+function installContent(files) {
+    // Determine if UE4SS.dll is in the root
+    const hasUE4SSDLL = files.some(file => path.basename(file).toLowerCase() === 'ue4ss.dll');
+    const destinationDir = hasUE4SSDLL ? pakDir : path.join(pakDir, "Mods");
+
+    // Create installation instructions
+    const instructions = files.map(file => {
+        return {
+            type: 'copy',
+            source: file,
+            destination: path.join(destinationDir, path.basename(file)),
+        };
+    });
+
+    return Promise.resolve({ instructions });
+}
+
+
 module.exports = {
 	default: main,
+	testSupportedContent,
+    installContent,
 };
