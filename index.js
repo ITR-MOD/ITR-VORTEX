@@ -53,7 +53,7 @@ async function copyFile(source, destination) {
 }
 
 async function prepareForModding(discovery) {
-
+	log('error', "[ITR2] [INSTALL] Preparing for modding");
 	await fs.ensureDirWritableAsync(path.join(pakDir, "Mods"));
 	await fs.ensureDirWritableAsync(path.join(pakDir, "LogicMods"));
 	await fs.ensureDirWritableAsync(path.join(pakDir, "LuaMods"));
@@ -68,12 +68,14 @@ async function prepareForModding(discovery) {
 	for (const file of filesToCopy) {
 		await copyFile(file.src, file.dest);
 	}
+	log('error', "[ITR2] [INSTALL] Copied required files");
 }
 
 
 
 // Mods can either be a UE4SS Lua mod, a UE4SS Blueprint mod, or a pak mod.
 function testSupportedContent(files, gameId) {
+	log('error', "[ITR2] [INSTALL] Testing supported content");
 	// If it's not MiABSFD, it's already unsupported.
 	if (GAME_NEXUS_ID !== gameId) {
 		return Promise.resolve({
@@ -88,8 +90,7 @@ function testSupportedContent(files, gameId) {
 	// Both Mods/*/Scripts/main.lua and Mods/*/enabled.txt must exist
 	let luaMainFile = files.find(
 		f => path.basename(f) === 'main.lua' &&
-			path.basename(path.dirname(f)) === 'Scripts' &&
-			path.basename(path.dirname(path.dirname(path.dirname(f)))) === 'Mods'
+			path.basename(path.dirname(f)) === 'Scripts'
 	);
 	if (luaMainFile) {
 		const modFolder = path.dirname(path.dirname(luaMainFile));
@@ -105,6 +106,7 @@ function testSupportedContent(files, gameId) {
 	// Special case for UE4SS (it doesn't have the enabled.txt files)
 	let isUE4SS = files.some(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss');
 
+	log('error', "[ITR2] [INSTALL] Supported:", isUE4SS || isLuaMod || isPakMod);
 	return Promise.resolve({
 		supported: isUE4SS || isLuaMod || isPakMod,
 		requiredFiles: [],
@@ -120,8 +122,10 @@ function testSupportedContent(files, gameId) {
 function installContent(files) {
 	let instructions = [];
 
-	// check if ./ue4ss/UE4SS.dll exists
+	log('error', "[ITR2] [INSTALL] Files:", files);
+	// Check if ./ue4ss/UE4SS.dll exists
 	if (files.some(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss')) {
+		log('error', "[ITR2] [UE4SS] Copying UE4SS.dll, UE4SS-settings.ini, and Mods to root directory");
 		instructions.push(
 			{
 				type: 'copy',
@@ -138,41 +142,52 @@ function installContent(files) {
 				source: files.find(f => path.basename(f) === 'Mods' && path.dirname(f) === 'ue4ss'),
 				destination: path.join('LuaMods'),
 			}
-			// TODO: Automatically patch the UE4SS-settings.ini file to include the mod folder
 		);
 		return Promise.resolve({ instructions });
 	}
 
-	// Check if it's a Lua mod by checking `./Scripts/main.lua` and `./enabled.txt`, if so, move all files to `LuaMods/modFolder`
-	let luaMainFile = files.find(
-		f => path.basename(f) === 'main.lua' &&
-			path.basename(path.dirname(f)).toLowerCase() === 'scripts' &&
-			path.basename(path.dirname(path.dirname(path.dirname(f)))) === 'mods'
-	);
-	if (luaMainFile) {
-		const modFolder = path.dirname(path.dirname(luaMainFile));
-		const enabledTxt = path.join(modFolder, 'enabled.txt');
-
-		if (files.includes(enabledTxt)) {
-			instructions.push({
-				type: 'copy',
-				source: path.join(modFolder, 'Scripts'),
-				destination: path.join("LuaMods", modFolder, 'Scripts'),
-			},
-			{
-				type: 'copy',
-				source: enabledTxt,
-				destination: path.join("LuaMods", modFolder, 'enabled.txt'),
-			});
-		
-			return Promise.resolve({ instructions });
-		}
-	}
-
+	// Check if it's a Lua mod by checking `./Scripts/main.lua` and `./enabled.txt`, if so, move all files to `LuaMods`
+	let isLuaMod = false;
+	let luaModDir = '';
 
 	for (let f of files) {
 		// Only copy files that are among the valid extensions.
-		// Fixes the "not part of the archive" error.
+		if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
+
+		if (path.basename(f) === 'main.lua' && (path.basename(path.dirname(f)) === 'Scripts' || path.basename(path.dirname(f)) === 'scripts')) {
+			const modFolder = path.dirname(path.dirname(f));
+			const enabledTxt = path.join(modFolder, 'enabled.txt');
+			
+			if (files.includes(enabledTxt)) {
+				isLuaMod = true;
+				luaModDir = modFolder;
+				break;
+			}
+		}
+	}
+
+	if (isLuaMod) {
+		// copy a fake file to the root directory to trigger the mod loader
+		instructions.push({
+			type: 'copy',
+			source: "fakefile.txt",
+			destination: path.join('LuaMods', "fakefile.txt"),
+		});
+
+		for (let f of files) {
+			if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
+			log('error', "[ITR2] [LUA]", f + " to " + path.join("LuaMods", path.basename(f)));
+			instructions.push({
+				type: 'copy',
+				source: f,
+				destination: path.join("LuaMods", "IM_GAY_FOR_MODDING", path.basename(f)),
+			});
+		}
+		return Promise.resolve({ instructions });
+	}
+
+	// Handle Blueprint and Pak mods
+	for (let f of files) {
 		if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
 
 		if ('.pak' === path.extname(f).toLowerCase() ||
@@ -181,6 +196,7 @@ function installContent(files) {
 			let parentFolder = path.basename(path.dirname(f));
 
 			if ('LogicMods' === parentFolder) {
+				log('error', "[ITR2] [BP] " + f + " to " + path.join("LogicMods", path.basename(f)));
 				// Blueprint mod
 				instructions.push({
 					type: 'copy',
@@ -188,6 +204,7 @@ function installContent(files) {
 					destination: path.join("LogicMods", path.basename(f)),
 				});
 			} else {
+				log('error', "[ITR2] [PAK] " + f + " to " + path.join("Mods", path.basename(f)));
 				// Pak mod
 				instructions.push({
 					type: 'copy',
@@ -195,14 +212,15 @@ function installContent(files) {
 					destination: path.join("Mods", path.basename(f)),
 				});
 			}
-		} else {
-			// TODO: LUA MODS
 		}
 	}
 
 	return Promise.resolve({ instructions });
 }
 
+
 module.exports = {
 	default: main,
+	installContent,
+	testSupportedContent,
 };
