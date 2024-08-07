@@ -84,20 +84,23 @@ function testSupportedContent(files, gameId) {
 		});
 	}
 
+
 	let isLuaMod = false;
 
-	// Check if UE4SS Lua mod:
-	// Both Mods/*/Scripts/main.lua and Mods/*/enabled.txt must exist
-	let luaMainFile = files.find(
-		f => path.basename(f) === 'main.lua' &&
-			path.basename(path.dirname(f)) === 'Scripts'
-	);
-	if (luaMainFile) {
-		const modFolder = path.dirname(path.dirname(luaMainFile));
+	// iterate over all folders at root to check if it's a Lua mod
+	for (let f of files) {
+		// Only copy files that are among the valid extensions.
+		if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
 
-		const enabledTxt = path.join(modFolder, 'enabled.txt');
+		if (path.basename(f) === 'main.lua' && (path.basename(path.dirname(f)) === 'Scripts' || path.basename(path.dirname(f)) === 'scripts')) {
+			const modFolder = path.dirname(path.dirname(f));
+			const enabledTxt = path.join(modFolder, 'enabled.txt');
 
-		isLuaMod = files.includes(enabledTxt);
+			if (files.includes(enabledTxt)) {
+				isLuaMod = true;
+				break;
+			}
+		}
 	}
 
 	// If a file ends with .pak, it's either a BP or pak mod.
@@ -106,7 +109,11 @@ function testSupportedContent(files, gameId) {
 	// Special case for UE4SS (it doesn't have the enabled.txt files)
 	let isUE4SS = files.some(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss');
 
-	log('error', "[ITR2] [INSTALL] Supported:", isUE4SS || isLuaMod || isPakMod);
+	if (isUE4SS || isLuaMod || isPakMod) {
+		log('error', "[ITR2] [INSTALL] Supported content");
+	} else {
+		log('error', "[ITR2] [INSTALL] Unsupported content");
+	}
 	return Promise.resolve({
 		supported: isUE4SS || isLuaMod || isPakMod,
 		requiredFiles: [],
@@ -167,20 +174,15 @@ function installContent(files) {
 	}
 
 	if (isLuaMod) {
-		// copy a fake file to the root directory to trigger the mod loader
-		instructions.push({
-			type: 'copy',
-			source: "fakefile.txt",
-			destination: path.join('LuaMods', "fakefile.txt"),
-		});
-
+		// Copy all files from Scripts to LuaMods/ModName/Scripts in the same path
+		log('error', "[ITR2] [Lua] Copying Lua mod files to LuaMods");
 		for (let f of files) {
 			if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
-			log('error', "[ITR2] [LUA]", f + " to " + path.join("LuaMods", path.basename(f)));
+
 			instructions.push({
 				type: 'copy',
 				source: f,
-				destination: path.join("LuaMods", "IM_GAY_FOR_MODDING", path.basename(f)),
+				destination: path.join('LuaMods', path.basename(luaModDir), path.relative(luaModDir, f)),
 			});
 		}
 		return Promise.resolve({ instructions });
