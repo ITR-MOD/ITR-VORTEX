@@ -214,9 +214,7 @@ function installContent(files) {
 	for (let f of files) {
 		if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
 
-		if ('.pak' === path.extname(f).toLowerCase() ||
-			'.ucas' === path.extname(f).toLowerCase() ||
-			'.utoc' === path.extname(f).toLowerCase()) {
+		if (['.pak', '.ucas', '.utoc'].includes(path.extname(f).toLowerCase())) {
 			let parentFolder = path.basename(path.dirname(f));
 
 			if ('LogicMods' === parentFolder) {
