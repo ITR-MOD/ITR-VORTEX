@@ -53,7 +53,7 @@ async function copyFile(source, destination) {
 }
 
 async function prepareForModding(discovery) {
-	log('error', "[ITR2] [INSTALL] Preparing for modding");
+	log('debug', "[ITR2] [INSTALL] Preparing for modding");
 	await fs.ensureDirWritableAsync(path.join(pakDir, "Mods"));
 	await fs.ensureDirWritableAsync(path.join(pakDir, "LogicMods"));
 	await fs.ensureDirWritableAsync(path.join(pakDir, "LuaMods"));
@@ -68,22 +68,21 @@ async function prepareForModding(discovery) {
 	for (const file of filesToCopy) {
 		await copyFile(file.src, file.dest);
 	}
-	log('error', "[ITR2] [INSTALL] Copied required files");
+	log('debug', "[ITR2] [INSTALL] Copied required files");
 }
 
 
 
 // Mods can either be a UE4SS Lua mod, a UE4SS Blueprint mod, or a pak mod.
 function testSupportedContent(files, gameId) {
-	log('error', "[ITR2] [INSTALL] Testing supported content");
-	// If it's not MiABSFD, it's already unsupported.
+	log('debug', "[ITR2] [INSTALL] Testing supported content");
+	// If it's not ITR2, it's already unsupported.
 	if (GAME_NEXUS_ID !== gameId) {
 		return Promise.resolve({
 			supported: false,
 			requiredFiles: [],
 		});
 	}
-
 
 	let isLuaMod = false;
 
@@ -110,9 +109,9 @@ function testSupportedContent(files, gameId) {
 	let isUE4SS = files.some(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss');
 
 	if (isUE4SS || isLuaMod || isPakMod) {
-		log('error', "[ITR2] [INSTALL] Supported content");
+		log('debug', "[ITR2] [INSTALL] Supported content");
 	} else {
-		log('error', "[ITR2] [INSTALL] Unsupported content");
+		log('debug', "[ITR2] [INSTALL] Unsupported content");
 	}
 	return Promise.resolve({
 		supported: isUE4SS || isLuaMod || isPakMod,
@@ -129,10 +128,26 @@ function testSupportedContent(files, gameId) {
 function installContent(files) {
 	let instructions = [];
 
-	log('error', "[ITR2] [INSTALL] Files:", files);
+	log('debug', "[ITR2] [INSTALL] Files:", files);
+
+	// if ./custom-format.txt exists, move it to the root directory
+	if (files.some(f => path.basename(f) === 'custom-format.txt')) {
+		log('debug', "[ITR2] [CUSTOM] Mod defined itself as a custom-format mod");
+		for (let f of files) {
+			if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase()) || path.basename(f) === 'custom-format.txt') continue;
+			instructions.push({
+				type: 'copy',
+				source: f,
+				destination: f,
+			});
+		}
+		return Promise.resolve({ instructions });
+	}
+
+
 	// Check if ./ue4ss/UE4SS.dll exists
 	if (files.some(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss')) {
-		log('error', "[ITR2] [UE4SS] Copying UE4SS.dll, UE4SS-settings.ini, and Mods to root directory");
+		log('debug', "[ITR2] [UE4SS] Copying UE4SS.dll, UE4SS-settings.ini, and Mods to root directory");
 		instructions.push(
 			{
 				type: 'copy',
@@ -164,7 +179,7 @@ function installContent(files) {
 		if (path.basename(f) === 'main.lua' && (path.basename(path.dirname(f)) === 'Scripts' || path.basename(path.dirname(f)) === 'scripts')) {
 			const modFolder = path.dirname(path.dirname(f));
 			const enabledTxt = path.join(modFolder, 'enabled.txt');
-			
+
 			if (files.includes(enabledTxt)) {
 				isLuaMod = true;
 				luaModDir = modFolder;
@@ -175,14 +190,14 @@ function installContent(files) {
 
 	if (isLuaMod) {
 		// Copy all files from Scripts to LuaMods/ModName/Scripts in the same path
-		log('error', "[ITR2] [Lua] Copying Lua mod files to LuaMods");
+		log('debug', "[ITR2] [Lua] Copying Lua mod files to LuaMods");
 		for (let f of files) {
 			if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
 
 			instructions.push({
 				type: 'copy',
 				source: f,
-				destination: path.join('LuaMods', path.basename(luaModDir), path.relative(luaModDir, f)),
+				destination: f,
 			});
 		}
 		return Promise.resolve({ instructions });
@@ -198,7 +213,7 @@ function installContent(files) {
 			let parentFolder = path.basename(path.dirname(f));
 
 			if ('LogicMods' === parentFolder) {
-				log('error', "[ITR2] [BP] " + f + " to " + path.join("LogicMods", path.basename(f)));
+				log('debug', "[ITR2] [BP] " + f + " to " + path.join("LogicMods", path.basename(f)));
 				// Blueprint mod
 				instructions.push({
 					type: 'copy',
@@ -206,7 +221,7 @@ function installContent(files) {
 					destination: path.join("LogicMods", path.basename(f)),
 				});
 			} else {
-				log('error', "[ITR2] [PAK] " + f + " to " + path.join("Mods", path.basename(f)));
+				log('debug', "[ITR2] [PAK] " + f + " to " + path.join("Mods", path.basename(f)));
 				// Pak mod
 				instructions.push({
 					type: 'copy',
