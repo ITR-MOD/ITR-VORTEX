@@ -213,27 +213,28 @@ function installContent(files) {
 	// Handle Blueprint and Pak mods
 	for (let f of files) {
 		if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
-
+		
 		if ('.pak' === path.extname(f).toLowerCase() ||
 			'.ucas' === path.extname(f).toLowerCase() ||
 			'.utoc' === path.extname(f).toLowerCase()) {
 			let parentFolder = path.basename(path.dirname(f));
+			let modName = path.basename(path.dirname(parentFolder === 'LogicMods' ? path.dirname(f) : f));
 
 			if ('LogicMods' === parentFolder) {
-				log('debug', "[ITR2] [BP] " + f + " to " + path.join("LogicMods", path.basename(f)));
+				log('debug', `[ITR2] [BP] ${f} to ${path.join("LogicMods", modName, path.basename(f))}`);
 				// Blueprint mod
 				instructions.push({
 					type: 'copy',
 					source: f,
-					destination: path.join("LogicMods", path.basename(f)),
+					destination: path.join("LogicMods", modName, path.basename(f)),
 				});
 			} else {
-				log('debug', "[ITR2] [PAK] " + f + " to " + path.join("Mods", path.basename(f)));
+				log('debug', `[ITR2] [PAK] ${f} to ${path.join("Mods", modName, path.basename(f))}`);
 				// Pak mod
 				instructions.push({
 					type: 'copy',
 					source: f,
-					destination: path.join("Mods", path.basename(f)),
+					destination: path.join("Mods", modName, path.basename(f)),
 				});
 			}
 		}
@@ -241,7 +242,6 @@ function installContent(files) {
 
 	return Promise.resolve({ instructions });
 }
-
 
 module.exports = {
 	default: main,
