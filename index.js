@@ -193,12 +193,19 @@ function installContent(files) {
 		log('debug', "[ITR2] [Lua] Copying Lua mod files to LuaMods");
 		for (let f of files) {
 			if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
-
-			instructions.push({
-				type: 'copy',
-				source: f,
-				destination: f,
-			});
+			const modName = path.basename(luaModDir);
+			instructions.push(
+				{
+					type: 'copy',
+					source: path.join(luaModDir, 'enabled.txt'),
+					destination: path.join('LuaMods', modName, 'enabled.txt'),
+				},
+				{
+					type: 'copy',
+					source: path.join(luaModDir, 'Scripts'),
+					destination: path.join('LuaMods', modName, 'Scripts'),
+				}
+			);
 		}
 		return Promise.resolve({ instructions });
 	}
