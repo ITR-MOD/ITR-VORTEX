@@ -21,7 +21,7 @@ function main(context) {
 		mergeMods: true,
 		queryPath: findGame,
 		supportedTools: [],
-		queryModPath: () => 'IntoTheRadius2/Content/Paks',
+		queryModPath: () => './',
 		logo: 'assets/gameart.jpg',
 		executable: () => 'IntoTheRadius2.exe',
 		requiredFiles: [
@@ -61,7 +61,6 @@ async function prepareForModding(discovery) {
 
 	// Copy over required UE4SS files
 	const filesToCopy = [
-		{ src: path.join(__dirname, 'assets', 'dwmapi.dll'), dest: path.join(discovery.path, binDir, 'dwmapi.dll') },
 		{ src: path.join(__dirname, 'assets', 'override.txt'), dest: path.join(discovery.path, binDir, 'override.txt') },
 	];
 
@@ -138,7 +137,7 @@ function installContent(files) {
 			instructions.push({
 				type: 'copy',
 				source: f,
-				destination: f,
+				destination: path.join(pakDir,f),
 			});
 		}
 		return Promise.resolve({ instructions });
@@ -151,18 +150,23 @@ function installContent(files) {
 		instructions.push(
 			{
 				type: 'copy',
+				source: files.find(f => path.basename(f) === 'dwmapi.dll'),
+				destination: path.join(binDir, 'dwmapi.dll'),
+			},
+			{
+				type: 'copy',
 				source: files.find(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss'),
-				destination: path.join('UE4SS.dll'),
+				destination: path.join(pakDir, 'UE4SS.dll'),
 			},
 			{
 				type: 'copy',
 				source: files.find(f => path.basename(f) === 'UE4SS-settings.ini' && path.dirname(f) === 'ue4ss'),
-				destination: path.join('UE4SS-settings.ini'),
+				destination: path.join(pakDir, 'UE4SS-settings.ini'),
 			},
 			{
 				type: 'copy',
 				source: files.find(f => path.basename(f) === 'Mods' && path.dirname(f) === 'ue4ss'),
-				destination: path.join('LuaMods'),
+				destination: path.join(pakDir, 'LuaMods'),
 			}
 		);
 		return Promise.resolve({ instructions });
@@ -198,12 +202,12 @@ function installContent(files) {
 				{
 					type: 'copy',
 					source: path.join(luaModDir, 'enabled.txt'),
-					destination: path.join('LuaMods', modName, 'enabled.txt'),
+					destination: path.join(pakDir, 'LuaMods', modName, 'enabled.txt'),
 				},
 				{
 					type: 'copy',
 					source: path.join(luaModDir, 'Scripts'),
-					destination: path.join('LuaMods', modName, 'Scripts'),
+					destination: path.join(pakDir, 'LuaMods', modName, 'Scripts'),
 				}
 			);
 		}
@@ -224,7 +228,7 @@ function installContent(files) {
 				instructions.push({
 					type: 'copy',
 					source: f,
-					destination: path.join("LogicMods", modName, path.basename(f)),
+					destination: path.join(pakDir, "LogicMods", modName, path.basename(f)),
 				});
 			} else {
 				log('debug', `[ITR2] [PAK] ${f} to ${path.join("Mods", modName, path.basename(f))}`);
@@ -232,7 +236,7 @@ function installContent(files) {
 				instructions.push({
 					type: 'copy',
 					source: f,
-					destination: path.join("Mods", modName, path.basename(f)),
+					destination: path.join(pakDir, "Mods", modName, path.basename(f)),
 				});
 			}
 		}
