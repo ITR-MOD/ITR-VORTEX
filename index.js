@@ -54,10 +54,13 @@ async function copyFile(source, destination) {
 
 async function prepareForModding(discovery) {
 	log('debug', "[ITR2] [INSTALL] Preparing for modding");
-	await fs.ensureDirWritableAsync(path.join(pakDir, "Mods"));
-	await fs.ensureDirWritableAsync(path.join(pakDir, "LogicMods"));
-	await fs.ensureDirWritableAsync(path.join(pakDir, "LuaMods"));
-	await fs.ensureDirWritableAsync(binDir);
+	await Promise.all([
+		fs.ensureDirWritableAsync(path.join(pakDir, "Mods")),
+		fs.ensureDirWritableAsync(path.join(pakDir, "LogicMods")),
+		fs.ensureDirWritableAsync(path.join(pakDir, "LuaMods")),
+		fs.ensureDirWritableAsync(binDir),
+	]);
+
 
 	// Copy over required UE4SS files
 	const filesToCopy = [
@@ -69,7 +72,6 @@ async function prepareForModding(discovery) {
 	}
 	log('debug', "[ITR2] [INSTALL] Copied required files");
 }
-
 
 
 // Mods can either be a UE4SS Lua mod, a UE4SS Blueprint mod, or a pak mod.
@@ -130,14 +132,27 @@ function installContent(files) {
 	log('debug', "[ITR2] [INSTALL] Files:", files);
 
 	// if ./custom-format.txt exists, move it to the root directory
-	if (files.some(f => path.basename(f) === 'custom-format.txt')) {
+	if (files.some(f => path.basename(f) === 'custom.txt')) {
 		log('debug', "[ITR2] [CUSTOM] Mod defined itself as a custom-format mod");
 		for (let f of files) {
 			if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase()) || path.basename(f) === 'custom-format.txt') continue;
 			instructions.push({
 				type: 'copy',
 				source: f,
-				destination: path.join(pakDir,f),
+				destination: path.join(pakDir, f),
+			});
+		}
+		return Promise.resolve({ instructions });
+	}
+
+	if (files.some(f => path.basename(f) === 'custom-full.txt')) {
+		log('debug', "[ITR2] [CUSTOM] Mod defined itself as a custom-format mod");
+		for (let f of files) {
+			if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase()) || path.basename(f) === 'custom-format.txt') continue;
+			instructions.push({
+				type: 'copy',
+				source: f,
+				destination: f,
 			});
 		}
 		return Promise.resolve({ instructions });
@@ -172,32 +187,14 @@ function installContent(files) {
 		return Promise.resolve({ instructions });
 	}
 
-	// Check if it's a Lua mod by checking `./Scripts/main.lua` and `./enabled.txt`, if so, move all files to `LuaMods`
-	let isLuaMod = false;
 	let luaModDir = '';
 
 	for (let f of files) {
-		// Only copy files that are among the valid extensions.
 		if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
 
-		if (path.basename(f) === 'main.lua' && (path.basename(path.dirname(f)) === 'Scripts' || path.basename(path.dirname(f)) === 'scripts')) {
-			const modFolder = path.dirname(path.dirname(f));
-			const enabledTxt = path.join(modFolder, 'enabled.txt');
-
-			if (files.includes(enabledTxt)) {
-				isLuaMod = true;
-				luaModDir = modFolder;
-				break;
-			}
-		}
-	}
-
-	if (isLuaMod) {
-		// Copy all files from Scripts to LuaMods/ModName/Scripts in the same path
-		log('debug', "[ITR2] [Lua] Copying Lua mod files to LuaMods");
-		for (let f of files) {
-			if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
-			const modName = path.basename(luaModDir);
+		if (path.basename(f) === 'enabled.txt') {
+			luaModDir = path.dirname(f);
+			let modName = path.dirname(path.dirname(f));
 			instructions.push(
 				{
 					type: 'copy',
@@ -208,31 +205,31 @@ function installContent(files) {
 					type: 'copy',
 					source: path.join(luaModDir, 'Scripts'),
 					destination: path.join(pakDir, 'LuaMods', modName, 'Scripts'),
+				},
+				{
+					type: 'copy',
+					source: path.join(luaModDir, 'shared'),
+					destination: path.join(pakDir, 'LuaMods', 'shared', modName),
 				}
 			);
+			continue;
 		}
-		return Promise.resolve({ instructions });
-	}
-
-	// Handle Blueprint and Pak mods
-	for (let f of files) {
-		if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
 
 		if (['.pak', '.ucas', '.utoc'].includes(path.extname(f).toLowerCase())) {
 			let parentFolder = path.basename(path.dirname(f));
-			let modName = path.basename(path.dirname(parentFolder === 'LogicMods' ? path.dirname(f) : f));
+			let modName;
 
-			if ('LogicMods' === parentFolder) {
+			if (parentFolder === 'LogicMods') {
+				modName = path.basename(path.dirname(path.dirname(f)));
 				log('debug', `[ITR2] [BP] ${f} to ${path.join("LogicMods", modName, path.basename(f))}`);
-				// Blueprint mod
 				instructions.push({
 					type: 'copy',
 					source: f,
 					destination: path.join(pakDir, "LogicMods", modName, path.basename(f)),
 				});
 			} else {
+				modName = path.basename(path.dirname(f));
 				log('debug', `[ITR2] [PAK] ${f} to ${path.join("Mods", modName, path.basename(f))}`);
-				// Pak mod
 				instructions.push({
 					type: 'copy',
 					source: f,

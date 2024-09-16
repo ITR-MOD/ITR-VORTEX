@@ -1,0 +1,45 @@
+name: Build and Release
+
+on:
+  push:
+    paths:
+      - 'info.json'
+      - '**.c'
+      - '**.h'
+      - 'Makefile'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install 7z
+      run: sudo apt-get install -y p7zip-full
+
+    - name: Run make
+      run: make
+
+    - name: Check for version change
+      id: version_check
+      run: |
+        VERSION=$(jq -r '.version' info.json)
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        git fetch --tags
+        if git tag | grep -q "v$VERSION"; then
+          echo "Version $VERSION already exists."
+          exit 0
+        fi
+
+    - name: Create tag and release
+      if: steps.version_check.outputs.VERSION != ''
+      env:
+        VERSION: ${{ env.VERSION }}
+      run: |
+        git config --global user.name 'github-actions'
+        git config --global user.email 'github-actions@github.com'
+        git tag "v$VERSION"
+        git push origin "v$VERSION"
+        gh release create "v$VERSION" game-intotheradius2.zip --title "Release v$VERSION" --notes "Automated release of version $VERSION"
