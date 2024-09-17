@@ -88,20 +88,14 @@ function testSupportedContent(files, gameId) {
 	let isLuaMod = false;
 
 	// iterate over all folders at root to check if it's a Lua mod
-	for (let f of files) {
-		// Only copy files that are among the valid extensions.
-		if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
+	let hasMainlua = files.some(f => path.basename(f) === 'main.lua');
+	let hasEnabledtxt = files.some(f => path.basename(f) === 'enabled.txt');
+	let hasShared = files.some(f => path.basename(f) === 'shared');
 
-		if (path.basename(f) === 'main.lua' && (path.basename(path.dirname(f)) === 'Scripts' || path.basename(path.dirname(f)) === 'scripts')) {
-			const modFolder = path.dirname(path.dirname(f));
-			const enabledTxt = path.join(modFolder, 'enabled.txt');
-
-			if (files.includes(enabledTxt)) {
-				isLuaMod = true;
-				break;
-			}
-		}
+	if ((hasMainlua && hasEnabledtxt) || hasShared) {
+		isLuaMod = true;
 	}
+
 
 	// If a file ends with .pak, it's either a BP or pak mod.
 	let isPakMod = files.some(f => path.extname(f).toLowerCase() === '.pak');
@@ -109,13 +103,27 @@ function testSupportedContent(files, gameId) {
 	// Special case for UE4SS (it doesn't have the enabled.txt files)
 	let isUE4SS = files.some(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss');
 
-	if (isUE4SS || isLuaMod || isPakMod) {
-		log('debug', "[ITR2] [INSTALL] Supported content");
-	} else {
+	let isCustomFormat = files.some(f => path.basename(f) === 'custom-full.txt') || files.some(f => path.basename(f) === 'custom.txt');
+
+	if (isUE4SS) {
+		log('debug', "[ITR2] [INSTALL] Supported content [UE4SS]");
+	}
+	if (isLuaMod) {
+		log('debug', "[ITR2] [INSTALL] Supported content [LUA]");
+	}
+	if (isPakMod) {
+		log('debug', "[ITR2] [INSTALL] Supported content [PAK]");
+
+	}
+	if (isCustomFormat) {
+		log('debug', "[ITR2] [INSTALL] Supported content [CUSTOM]");
+	}
+
+	if (!isUE4SS && !isLuaMod && !isPakMod && !isCustomFormat) {
 		log('debug', "[ITR2] [INSTALL] Unsupported content");
 	}
 	return Promise.resolve({
-		supported: isUE4SS || isLuaMod || isPakMod,
+		supported: isUE4SS || isLuaMod || isPakMod || isCustomFormat,
 		requiredFiles: [],
 	});
 }
@@ -131,33 +139,24 @@ function installContent(files) {
 
 	log('debug', "[ITR2] [INSTALL] Files:", files);
 
-	// if ./custom-format.txt exists, move it to the root directory
-	if (files.some(f => path.basename(f) === 'custom.txt')) {
+	// Check if either 'custom.txt' or 'custom-full.txt' exists, and handle the copy process
+	const customFile = files.find(f => ['custom.txt', 'custom-full.txt'].includes(path.basename(f)));
+
+	if (customFile) {
 		log('debug', "[ITR2] [CUSTOM] Mod defined itself as a custom-format mod");
+
 		for (let f of files) {
 			if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase()) || path.basename(f) === 'custom-format.txt') continue;
+			const destination = path.basename(customFile) === 'custom.txt' ? path.join(pakDir, f) : f;
 			instructions.push({
 				type: 'copy',
 				source: f,
-				destination: path.join(pakDir, f),
+				destination: destination,  // Handle destination paths
 			});
 		}
+
 		return Promise.resolve({ instructions });
 	}
-
-	if (files.some(f => path.basename(f) === 'custom-full.txt')) {
-		log('debug', "[ITR2] [CUSTOM] Mod defined itself as a custom-format mod");
-		for (let f of files) {
-			if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase()) || path.basename(f) === 'custom-format.txt') continue;
-			instructions.push({
-				type: 'copy',
-				source: f,
-				destination: f,
-			});
-		}
-		return Promise.resolve({ instructions });
-	}
-
 
 	// Check if ./ue4ss/UE4SS.dll exists
 	if (files.some(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss')) {
@@ -188,33 +187,60 @@ function installContent(files) {
 	}
 
 	let luaModDir = '';
+	let luaSharedCopy = false;
+	let luaModName = '';
 
 	for (let f of files) {
+		// Skip files that do not have valid extensions
 		if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
+		log('debug', `[ITR2] [INSTALL] Checking ${f}`);
 
+		// Determine Lua Mod Name based on directory structure (if applicable)
+		const fileDir = path.dirname(f);
+		const baseDir = path.basename(fileDir);
+		log('debug', `[ITR2] [INSTALL] Base directory: ${baseDir}`);
+		log('debug', `[ITR2] [INSTALL] File directory: ${fileDir}`);
+
+		// Check if the file is inside a LuaMods or related directory
+		if (['luamods', 'luamod'].includes(baseDir.toLowerCase())) {
+			luaModName = path.basename(path.dirname(fileDir));  // Mod name is the parent folder of LuaMods
+		} else {
+			luaModName = baseDir;  // Use the current folder as mod name if it's not under LuaMods
+		}
+
+		// Check for 'enabled.txt'
 		if (path.basename(f) === 'enabled.txt') {
-			luaModDir = path.dirname(f);
-			let modName = path.dirname(path.dirname(f));
+			luaModDir = fileDir;
+			log('debug', `[ITR2] [LUA] ${f} to ${path.join('LuaMods', luaModName, 'enabled.txt')}`);
 			instructions.push(
 				{
 					type: 'copy',
 					source: path.join(luaModDir, 'enabled.txt'),
-					destination: path.join(pakDir, 'LuaMods', modName, 'enabled.txt'),
+					destination: path.join(pakDir, 'LuaMods', luaModName, 'enabled.txt'),
 				},
 				{
 					type: 'copy',
 					source: path.join(luaModDir, 'Scripts'),
-					destination: path.join(pakDir, 'LuaMods', modName, 'Scripts'),
-				},
-				{
-					type: 'copy',
-					source: path.join(luaModDir, 'shared'),
-					destination: path.join(pakDir, 'LuaMods', 'shared', modName),
+					destination: path.join(pakDir, 'LuaMods', luaModName, 'Scripts'),
 				}
 			);
 			continue;
 		}
 
+		if ((path.basename(fileDir) === 'shared') && (path.extname(f).toLowerCase() === '.lua') && !luaSharedCopy) {
+			luaSharedCopy = true;
+
+		
+			log('debug', `[ITR2] [LUA] ${f} to ${path.join('LuaMods', 'shared', luaModName)}`);
+			instructions.push({
+				type: 'copy',
+				source: path.dirname(f),
+				destination: path.join(pakDir, 'LuaMods', 'shared', luaModName),
+			});
+			continue;
+		}
+		
+		// Handle .pak, .ucas, .utoc files for LogicMods and Mods
 		if (['.pak', '.ucas', '.utoc'].includes(path.extname(f).toLowerCase())) {
 			let parentFolder = path.basename(path.dirname(f));
 			let modName;
