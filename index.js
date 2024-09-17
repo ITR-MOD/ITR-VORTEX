@@ -75,7 +75,7 @@ async function prepareForModding(discovery) {
 
 function isFomod(files) {
 	if (files.some(f => path.basename(f) === 'moduleconfig.xml')) {
-		log('debug', "[ITR1] [INSTALL] Detected FOMOD");
+		log('debug', "[ITR2] [INSTALL] Detected FOMOD");
 		return true;
 	}
 	return false;
