@@ -237,7 +237,11 @@ function installContent(files) {
 		if ((path.basename(fileDir) === 'shared') && (path.extname(f).toLowerCase() === '.lua') && !luaSharedCopy) {
 			luaSharedCopy = true;
 
-		
+			if (luaModName === 'shared') {
+				const parentFolder = path.basename(path.dirname(fileDir));
+				luaModName = parentFolder === '' ? 'ITR2-Common' : parentFolder;
+			}
+
 			log('debug', `[ITR2] [LUA] ${f} to ${path.join('LuaMods', 'shared', luaModName)}`);
 			instructions.push({
 				type: 'copy',
