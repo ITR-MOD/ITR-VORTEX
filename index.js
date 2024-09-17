@@ -73,12 +73,19 @@ async function prepareForModding(discovery) {
 	log('debug', "[ITR2] [INSTALL] Copied required files");
 }
 
+function isFomod(files) {
+	if (files.some(f => path.basename(f) === 'moduleconfig.xml')) {
+		log('debug', "[ITR1] [INSTALL] Detected FOMOD");
+		return true;
+	}
+	return false;
+}
 
 // Mods can either be a UE4SS Lua mod, a UE4SS Blueprint mod, or a pak mod.
 function testSupportedContent(files, gameId) {
 	log('debug', "[ITR2] [INSTALL] Testing supported content");
 	// If it's not ITR2, it's already unsupported.
-	if (GAME_NEXUS_ID !== gameId) {
+	if ((GAME_NEXUS_ID !== gameId) || isFomod(files)) {
 		return Promise.resolve({
 			supported: false,
 			requiredFiles: [],
@@ -239,7 +246,7 @@ function installContent(files) {
 			});
 			continue;
 		}
-		
+
 		// Handle .pak, .ucas, .utoc files for LogicMods and Mods
 		if (['.pak', '.ucas', '.utoc'].includes(path.extname(f).toLowerCase())) {
 			let parentFolder = path.basename(path.dirname(f));
