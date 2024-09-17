@@ -30,7 +30,7 @@ This guide explains the required structure for packing mods to ensure they are c
 
 For a full example of how mods should be structured, refer to the [mod format example on GitHub](https://github.com/Merith-TK/game-intotheradius2-modformat).
 
-### 1. **PAK MODS**
+### **PAK MODS**
 
 These are standard Unreal Engine `.pak` mods, and they should be placed under `IntoTheRadius2/Content/Paks/Mods/`.
 
@@ -54,7 +54,7 @@ These are standard Unreal Engine `.pak` mods, and they should be placed under `I
     IntoTheRadius2/Content/Paks/Mods/folder/mod.pak
     ```
 
-### 2. **LUA MODS**
+### **LUA MODS**
 
 For Lua mods, you must follow a specific structure. The Vortex extension searches for an `enabled.txt` file, and the parent folder of this file will be used as the mod name. Lua mods should be installed to `IntoTheRadius2/Content/Paks/LuaMods/`.
 
@@ -70,7 +70,7 @@ For Lua mods, you must follow a specific structure. The Vortex extension searche
     IntoTheRadius2/Content/Paks/LuaMods/modName/enabled.txt
     ```
 
-### 3. **SHARED LUA LIBRARIES**
+### **SHARED LUA LIBRARIES**
 
 If your mod includes shared Lua libraries or configs, these must be inside a `shared` folder within your mod directory. The contents of the `shared` folder will be placed in the shared directory for `ue4ss`.
 
@@ -83,7 +83,7 @@ If your mod includes shared Lua libraries or configs, these must be inside a `sh
     IntoTheRadius2/Content/Paks/LuaMods/shared/modName/
     ```
 
-### 4. **LOGIC MODS**
+### **LOGIC MODS**
 
 While LogicMods are currently untested, they should follow the same structure as `.pak` mods. However, the destination folder will be `IntoTheRadius2/Content/Paks/LogicMods/`.
 
@@ -96,7 +96,7 @@ While LogicMods are currently untested, they should follow the same structure as
     IntoTheRadius2/Content/Paks/LogicMods/modName/mod.pak
     ```
 
-### 5. **EXAMPLE ZIP CONTENTS**
+### **EXAMPLE ZIP CONTENTS**
 
 Here’s an example of a properly structured mod archive:
 
@@ -114,7 +114,7 @@ mod.zip/
 |   |   |   +--- example.lua
 ```
 
-### 6. **EXAMPLE INSTALLED PATH CONTENTS**
+### **EXAMPLE INSTALLED PATH CONTENTS**
 
 After installation, the mod will be placed as follows:
 
