@@ -4,9 +4,8 @@ on:
   push:
     paths:
       - 'info.json'
-      - '**.c'
-      - '**.h'
-      - 'Makefile'
+      - '**.js'
+      - 'makefile'
 
 jobs:
   build:
