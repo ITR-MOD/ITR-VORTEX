@@ -143,26 +143,27 @@ function testSupportedContent(files, gameId) {
 // Move all .pak files that are not located inside a Logic Mods folder, to IntoTheRadius2\Content\Paks
 function installContent(files) {
 	let instructions = [];
-
+	let alreadyCopied = [];
 	log('debug', "[ITR2] [INSTALL] Files:", files);
 
-	// Check if either 'custom.txt' or 'custom-full.txt' exists, and handle the copy process
-	const customFile = files.find(f => ['custom.txt', 'custom-full.txt'].includes(path.basename(f)));
-
-	if (customFile) {
-		log('debug', "[ITR2] [CUSTOM] Mod defined itself as a custom-format mod");
-
-		for (let f of files) {
-			if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase()) || path.basename(f) === 'custom-format.txt') continue;
-			const destination = path.basename(customFile) === 'custom.txt' ? path.join(pakDir, f) : f;
-			instructions.push({
-				type: 'copy',
-				source: f,
-				destination: destination,  // Handle destination paths
-			});
+	// Handle Custom File logic
+	const customFiles = files.filter(f => path.basename(f) === 'custom.txt');
+	for (const customFile of customFiles) {
+		const customDir = path.dirname(customFile);
+		const customDirFiles = files.filter(f => path.dirname(f) === customDir);
+		for (const file of customDirFiles) {
+			if (!alreadyCopied.includes(file)) {
+				if (path.basename(file) === 'custom.txt') {
+					continue;
+				}
+				instructions.push({
+					type: 'copy',
+					source: file,
+					destination: path.join(pakDir, file),
+				});
+				alreadyCopied.push(file);
+			}
 		}
-
-		return Promise.resolve({ instructions });
 	}
 
 	// Check if ./ue4ss/UE4SS.dll exists
@@ -201,6 +202,11 @@ function installContent(files) {
 		// Skip files that do not have valid extensions
 		if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
 		log('debug', `[ITR2] [INSTALL] Checking ${f}`);
+
+		if (alreadyCopied.includes(f)) {
+			log('debug', `[ITR2] [INSTALL] Skipping already copied file: ${f}`);
+			continue;
+		}
 
 		// Determine Lua Mod Name based on directory structure (if applicable)
 		const fileDir = path.dirname(f);
