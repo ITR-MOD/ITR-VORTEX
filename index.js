@@ -22,7 +22,7 @@ function main(context) {
 		queryPath: findGame,
 		supportedTools: [],
 		queryModPath: () => './',
-		logo: 'assets/ITR2.jpg',
+		logo: 'assets/ITR2.png',
 		executable: () => 'IntoTheRadius2.exe',
 		requiredFiles: [
 			'IntoTheRadius2.exe'

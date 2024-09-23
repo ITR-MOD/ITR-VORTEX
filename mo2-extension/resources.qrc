@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/">
+        <file>../assets/ITR1.jpg</file>
+        <file>../assets/ITR1-icon.png</file>
+        
+        <file>../assets/ITR2.png</file>
+        <file>../assets/ITR2-icon.png</file>
+    </qresource>
+</RCC>
