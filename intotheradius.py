@@ -15,40 +15,136 @@ class IntoTheRadius2ModDataChecker(mobase.ModDataChecker):
         folders: List[mobase.IFileTree] = []
         files: List[mobase.FileTreeEntry] = []
 
-        for entry in filetree:
-            if isinstance(entry, mobase.IFileTree):
-                folders.append(entry)
-            else:
-                files.append(entry)
-
-        if len(folders) != 1:
-            return mobase.ModDataChecker.INVALID
-
-        folder = folders[0]
-        pakfile = folder.name() + ".pak"
-        if folder.exists(pakfile):
-            if filetree.exists(pakfile):
-                return mobase.ModDataChecker.VALID
-            else:
-                return mobase.ModDataChecker.FIXABLE
-
-        return mobase.ModDataChecker.INVALID
+        return mobase.ModDataChecker.FIXABLE
 
     def fix(self, filetree: mobase.IFileTree) -> Optional[mobase.IFileTree]:
-        first_entry = filetree[0]
-        if not isinstance(first_entry, mobase.IFileTree):
-            return None
-        entry = first_entry.find(filetree[0].name() + ".pak")
-        if entry is None:
-            return None
-        filetree.copy(entry, "", mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS)
+        instructions = []
+        already_copied = []
+
+        # Filter out 'custom.txt' files and copy them along with their directory contents
+        custom_files = [entry for entry in filetree if entry.name() == "custom.txt"]
+        for custom_file in custom_files:
+            custom_dir = custom_file.parent()
+            custom_dir_files = [f for f in filetree if f.parent() == custom_dir]
+            for file in custom_dir_files:
+                if file not in already_copied and file.name() != "custom.txt":
+                    print(f"Copying {file} to {file}")
+                    filetree.copy(
+                        file, file, mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS
+                    )
+                    already_copied.append(file)
+
+        # Check for UE4SS logic
+        ue4ss_files = [
+            f
+            for f in filetree
+            if f.name() == "UE4SS.dll" and f.parent().name() == "ue4ss"
+        ]
+        if ue4ss_files:
+            print("Copying UE4SS.dll, UE4SS-settings.ini, and Mods to root directory")
+            ue4ss_dll = filetree.find("dwmapi.dll")
+            ue4ss_ini = filetree.find("ue4ss/UE4SS-settings.ini")
+            ue4ss_mods = filetree.find("ue4ss/Mods")
+            filetree.copy(
+                ue4ss_dll,
+                "bin/dwmapi.dll",
+                mobase.IFileTree.InsertPolicy.REPLACE,
+            )
+            filetree.copy(
+                ue4ss_files[0],
+                "IntoTheRadius2/Content/Paks/UE4SS.dll",
+                mobase.IFileTree.InsertPolicy.REPLACE,
+            )
+            filetree.copy(
+                ue4ss_ini,
+                "IntoTheRadius2/Content/Paks/UE4SS-settings.ini",
+                mobase.IFileTree.InsertPolicy.REPLACE,
+            )
+            filetree.copy(
+                ue4ss_mods,
+                "IntoTheRadius2/Content/Paks/LuaMods",
+                mobase.IFileTree.InsertPolicy.REPLACE,
+            )
+            return filetree
+
+        # Handle LuaMods, LogicMods, and other files
+        lua_mod_dir = ""
+        lua_shared_copy = False
+        lua_mod_name = ""
+
+        for file in filetree:
+            if file in already_copied:
+                continue
+
+            file_dir = file.parent()
+            base_dir = file_dir.name()
+
+            if base_dir.lower() in ["luamods", "luamod"]:
+                lua_mod_name = file_dir.parent().name()
+            else:
+                lua_mod_name = base_dir
+
+            if file.name() == "enabled.txt":
+                lua_mod_dir = file_dir
+                filetree.copy(
+                    file_dir.find("enabled.txt"),
+                    f"IntoTheRadius2/Content/Paks/LuaMods/{lua_mod_name}/enabled.txt",
+                    mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS,
+                )
+                filetree.copy(
+                    file_dir.find("Scripts"),
+                    f"IntoTheRadius2/Content/Paks/LuaMods/{lua_mod_name}/Scripts",
+                    mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS,
+                )
+                continue
+
+            if (
+                base_dir.lower() == "shared"
+                and file.name().endswith(".lua")
+                and not lua_shared_copy
+            ):
+                lua_shared_copy = True
+                lua_mod_name = (
+                    file_dir.parent().name()
+                    if lua_mod_name == "shared"
+                    else "ITR2-Common"
+                )
+                filetree.copy(
+                    file_dir,
+                    f"IntoTheRadius2/Content/Paks/LuaMods/shared/{lua_mod_name}",
+                    mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS,
+                )
+                continue
+
+            ## WORKING
+            # Handle .pak, .ucas, .utoc files
+            if file.name().endswith((".pak", ".ucas", ".utoc")):
+                parent_folder = file_dir.parent().name() if file_dir.parent() else ""
+                mod_name = (
+                    file_dir.parent().parent().name()
+                    if parent_folder == "LogicMods"
+                    else parent_folder
+                )
+                if parent_folder == "LogicMods":
+                    filetree.copy(
+                        file,
+                        f"IntoTheRadius2/Content/Paks/LogicMods/{mod_name}/{file.name()}",
+                        mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS,
+                    )
+                else:
+                    filetree.copy(
+                        file,
+                        f"IntoTheRadius2/Content/Paks/Mods/{mod_name}/{file.name()}",
+                        mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS,
+                    )
+
         return filetree
 
 
 class IntoTheRadius2Game(BasicGame):
     Name = "Into The Radius 2 Support Plugin"
-    Author = "MerithXYZ"
-    Version = "0.3.2"
+    Author = "Merith-TK"
+    Version = "0.3.2.0"
 
     GameName = "Into The Radius 2"
     GameShortName = "intotheradius2"
@@ -56,8 +152,8 @@ class IntoTheRadius2Game(BasicGame):
     GameSteamId = 2307350
     GameBinary = "IntoTheRadius2.exe"
     GameDataPath = ""
-    GameDocumentsDirectory = "%GAME_PATH%"
-    GameSavesDirectory = "%GAME_PATH%/Save"
+    GameDocumentsDirectory = "%DOCUMENTS%/My Games/IntoTheRadius2"
+    GameSavesDirectory = "%DOCUMENTS%/My Games/IntoTheRadius2"
     GameSaveExtension = "sav"
     GameSupportURL = (
         r"https://github.com/ModOrganizer2/modorganizer-basic_games/wiki/"
