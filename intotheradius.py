@@ -1,9 +1,9 @@
 from typing import List, Optional
+from ..basic_game import BasicGame
 
 import mobase
-
-from ..basic_game import BasicGame
 import sys
+
 
 PAK_DIR = "IntoTheRadius2/Content/Paks"
 BIN_DIR = "IntoTheRadius2/Binaries/Win64"
@@ -26,22 +26,27 @@ class IntoTheRadius2ModDataChecker(mobase.ModDataChecker):
         return mobase.ModDataChecker.FIXABLE
 
     def fix(self, filetree: mobase.IFileTree) -> Optional[mobase.IFileTree]:
-        instructions = []
+
         already_copied = []
         print("FOR FUCKS SAKE WHERE AM I?!", file=sys.stderr)
+        ## Status: Working
         # Check for UE4SS logic
         dwmapi_dll = filetree.find("dwmapi.dll")
         ue4ss_dll = filetree.find("ue4ss/UE4SS.dll")
         ue4ss_ini = filetree.find("ue4ss/UE4SS-settings.ini")
         ue4ss_mods = filetree.find("ue4ss/Mods")
+        override_txt = filetree.find("override.txt")
 
         if dwmapi_dll and ue4ss_dll and ue4ss_ini and ue4ss_mods:
             filetree.move(dwmapi_dll, BIN_DIR + "/dwmapi.dll")
+            filetree.move(override_txt, BIN_DIR + "/override.txt")
             filetree.move(ue4ss_dll, PAK_DIR + "/UE4SS.dll")
             filetree.move(ue4ss_ini, PAK_DIR + "/UE4SS-settings.ini")
-            filetree.move(ue4ss_mods, PAK_DIR + "/Mods")
+            filetree.move(ue4ss_mods, PAK_DIR + "/LuaMods")
+            filetree.remove("ue4ss")
             return filetree
 
+        ## Status: Not Working
         # Filter out 'custom.txt' files and copy them along with their directory contents
         custom_files = [f for f in filetree if f.name() == "custom.txt"]
         for custom_file in custom_files:
@@ -52,6 +57,7 @@ class IntoTheRadius2ModDataChecker(mobase.ModDataChecker):
                     filetree.move(entry, entry)
                     already_copied.append(entry)
 
+        ## Status: Not Working
         # Handle LuaMods, LogicMods, and other files
         lua_mod_name = ""
         lua_shared_copy = False
@@ -80,9 +86,6 @@ class IntoTheRadius2ModDataChecker(mobase.ModDataChecker):
                     shared_dir,
                     f"{PAK_DIR}/LuaMods/shared/{lua_mod_name}",
                 )
-
-        for f in filetree:
-            log(f)
 
         return filetree
 
