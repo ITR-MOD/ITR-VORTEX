@@ -15,7 +15,7 @@ def log(msg):
 
 def fsParent(file: mobase.FileTreeEntry) -> mobase.FileTreeEntry:
     if file.parent() is None:
-        return ""
+        return file
     return file.parent()
 
 
