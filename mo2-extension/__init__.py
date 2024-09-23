@@ -7,4 +7,5 @@ from .IntoTheRadius import IntoTheRadiusPlugin
 
 
 def createPlugin():
+    print("Creating IntoTheRadiusPlugin")
     return IntoTheRadiusPlugin()
