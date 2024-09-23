@@ -36,7 +36,7 @@ itr1-mo2:
 itr2-mo2:
 	sed -i "s/\.jpg/\.png/g" intotheradius.py
 	sed -i "s/ITR1/ITR2/g" intotheradius.py
-	sed -i "s/Into The Radius/Into the Radius 2/g" intotheradius.py
+	sed -i "s/Into The Radius/Into The Radius 2/g" intotheradius.py
 	sed -i "s/IntoTheRadius/IntoTheRadius2/g" intotheradius.py
 	sed -i "s/intotheradiusvr/intotheradius2/g" intotheradius.py
 	sed -i "s/1012790/2307350/g" intotheradius.py
