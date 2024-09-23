@@ -29,7 +29,7 @@ class IntoTheRadius2ModDataChecker(mobase.ModDataChecker):
             for file in custom_dir_files:
                 if file not in already_copied and file.name() != "custom.txt":
                     print(f"Copying {file} to {file}")
-                    filetree.copy(
+                    filetree.move(
                         file, file, mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS
                     )
                     already_copied.append(file)
@@ -45,24 +45,24 @@ class IntoTheRadius2ModDataChecker(mobase.ModDataChecker):
             ue4ss_dll = filetree.find("dwmapi.dll")
             ue4ss_ini = filetree.find("ue4ss/UE4SS-settings.ini")
             ue4ss_mods = filetree.find("ue4ss/Mods")
-            filetree.copy(
+            filetree.move(
                 ue4ss_dll,
-                "bin/dwmapi.dll",
+                f"bin/dwmapi.dll",
                 mobase.IFileTree.InsertPolicy.REPLACE,
             )
-            filetree.copy(
+            filetree.move(
                 ue4ss_files[0],
-                "IntoTheRadius2/Content/Paks/UE4SS.dll",
+                f"IntoTheRadius2/Content/Paks/UE4SS.dll",
                 mobase.IFileTree.InsertPolicy.REPLACE,
             )
-            filetree.copy(
+            filetree.move(
                 ue4ss_ini,
-                "IntoTheRadius2/Content/Paks/UE4SS-settings.ini",
+                f"IntoTheRadius2/Content/Paks/UE4SS-settings.ini",
                 mobase.IFileTree.InsertPolicy.REPLACE,
             )
-            filetree.copy(
+            filetree.move(
                 ue4ss_mods,
-                "IntoTheRadius2/Content/Paks/LuaMods",
+                f"IntoTheRadius2/Content/Paks/LuaMods",
                 mobase.IFileTree.InsertPolicy.REPLACE,
             )
             return filetree
@@ -86,12 +86,12 @@ class IntoTheRadius2ModDataChecker(mobase.ModDataChecker):
 
             if file.name() == "enabled.txt":
                 lua_mod_dir = file_dir
-                filetree.copy(
+                filetree.move(
                     file_dir.find("enabled.txt"),
                     f"IntoTheRadius2/Content/Paks/LuaMods/{lua_mod_name}/enabled.txt",
                     mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS,
                 )
-                filetree.copy(
+                filetree.move(
                     file_dir.find("Scripts"),
                     f"IntoTheRadius2/Content/Paks/LuaMods/{lua_mod_name}/Scripts",
                     mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS,
@@ -109,30 +109,39 @@ class IntoTheRadius2ModDataChecker(mobase.ModDataChecker):
                     if lua_mod_name == "shared"
                     else "ITR2-Common"
                 )
-                filetree.copy(
+                filetree.move(
                     file_dir,
                     f"IntoTheRadius2/Content/Paks/LuaMods/shared/{lua_mod_name}",
                     mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS,
                 )
                 continue
 
-            ## WORKING
+            ## WORKING-ish
             # Handle .pak, .ucas, .utoc files
             if file.name().endswith((".pak", ".ucas", ".utoc")):
-                parent_folder = file_dir.parent().name() if file_dir.parent() else ""
+                parent_folder = ""
+                if file_dir.parent():
+                    parent_folder = file_dir.parent().name()
                 mod_name = (
                     file_dir.parent().parent().name()
                     if parent_folder == "LogicMods"
                     else parent_folder
                 )
+                print(f"PARENT FOLDER: {parent_folder}")
                 if parent_folder == "LogicMods":
-                    filetree.copy(
+                    print(
+                        f"Copying {file} to IntoTheRadius2/Content/Paks/LogicMods/{mod_name}/{file.name()}"
+                    )
+                    filetree.move(
                         file,
                         f"IntoTheRadius2/Content/Paks/LogicMods/{mod_name}/{file.name()}",
                         mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS,
                     )
                 else:
-                    filetree.copy(
+                    print(
+                        f"Copying {file} to IntoTheRadius2/Content/Paks/Mods/{mod_name}/{file.name()}"
+                    )
+                    filetree.move(
                         file,
                         f"IntoTheRadius2/Content/Paks/Mods/{mod_name}/{file.name()}",
                         mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS,
@@ -162,5 +171,6 @@ class IntoTheRadius2Game(BasicGame):
 
     def init(self, organizer: mobase.IOrganizer):
         super().init(organizer)
+        # TODO: write "../../Content/Paks" to "IntoTheRadius2/Binaries/Win64/override.txt"
         self._register_feature(IntoTheRadius2ModDataChecker())
         return True
