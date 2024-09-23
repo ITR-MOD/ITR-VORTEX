@@ -10,7 +10,8 @@ mo2-uninstall:
 mo2-install: mo2-uninstall
 	-mkdir -p $(MO2)/plugins/IntoTheRadius
 	cp ./*.py $(MO2)/plugins/IntoTheRadius/
-	cp -r ./assets $(MO2)/plugins/IntoTheRadius/
+	cp -r ../assets $(MO2)/plugins/IntoTheRadius/
+
 mo2-assets:
 	pyside6-rcc -o resources.py resources.qrc
 	sed -i "s/from PySide6 import QtCore/from PyQt6 import QtCore/g" resources.py
