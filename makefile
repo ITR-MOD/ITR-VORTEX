@@ -53,7 +53,7 @@ itr2-mo2:
 	sed -i "s/1012790/2307350/g" intotheradius.py
 	sed -i "s/22/2/g" intotheradius.py
 mo2:
-	$(MO2)/ModOrganizer.exe --logs
+	$(MO2)/ModOrganizer.exe 
 generate-dummy-installation:
 	mkdir -p .dummy/IntoTheRadius .dummy-itr/IntoTheRadius/Content/Paks .dummy-itr/IntoTheRadius/Binaries/Win64 .dummy-itr/IntoTheRadius2/Content/Paks .dummy-itr/IntoTheRadius2/Binaries/Win64 
 	touch .dummy-itr/IntoTheRadius.exe .dummy/IntoTheRadius2.exe

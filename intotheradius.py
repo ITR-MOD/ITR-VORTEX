@@ -3,6 +3,14 @@ from typing import List, Optional
 import mobase
 
 from ..basic_game import BasicGame
+import sys
+
+PAK_DIR = "IntoTheRadius2/Content/Paks"
+BIN_DIR = "IntoTheRadius2/Binaries/Win64"
+
+
+def log(msg):
+    print(msg, file=sys.stderr)
 
 
 class IntoTheRadius2ModDataChecker(mobase.ModDataChecker):
@@ -20,132 +28,61 @@ class IntoTheRadius2ModDataChecker(mobase.ModDataChecker):
     def fix(self, filetree: mobase.IFileTree) -> Optional[mobase.IFileTree]:
         instructions = []
         already_copied = []
-
-        # Filter out 'custom.txt' files and copy them along with their directory contents
-        custom_files = [entry for entry in filetree if entry.name() == "custom.txt"]
-        for custom_file in custom_files:
-            custom_dir = custom_file.parent()
-            custom_dir_files = [f for f in filetree if f.parent() == custom_dir]
-            for file in custom_dir_files:
-                if file not in already_copied and file.name() != "custom.txt":
-                    print(f"Copying {file} to {file}")
-                    filetree.move(
-                        file, file, mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS
-                    )
-                    already_copied.append(file)
-
+        print("FOR FUCKS SAKE WHERE AM I?!", file=sys.stderr)
         # Check for UE4SS logic
-        ue4ss_files = [
-            f
-            for f in filetree
-            if f.name() == "UE4SS.dll" and f.parent().name() == "ue4ss"
-        ]
-        if ue4ss_files:
-            print("Copying UE4SS.dll, UE4SS-settings.ini, and Mods to root directory")
-            ue4ss_dll = filetree.find("dwmapi.dll")
-            ue4ss_ini = filetree.find("ue4ss/UE4SS-settings.ini")
-            ue4ss_mods = filetree.find("ue4ss/Mods")
-            filetree.move(
-                ue4ss_dll,
-                f"bin/dwmapi.dll",
-                mobase.IFileTree.InsertPolicy.REPLACE,
-            )
-            filetree.move(
-                ue4ss_files[0],
-                f"IntoTheRadius2/Content/Paks/UE4SS.dll",
-                mobase.IFileTree.InsertPolicy.REPLACE,
-            )
-            filetree.move(
-                ue4ss_ini,
-                f"IntoTheRadius2/Content/Paks/UE4SS-settings.ini",
-                mobase.IFileTree.InsertPolicy.REPLACE,
-            )
-            filetree.move(
-                ue4ss_mods,
-                f"IntoTheRadius2/Content/Paks/LuaMods",
-                mobase.IFileTree.InsertPolicy.REPLACE,
-            )
+        dwmapi_dll = filetree.find("dwmapi.dll")
+        ue4ss_dll = filetree.find("ue4ss/UE4SS.dll")
+        ue4ss_ini = filetree.find("ue4ss/UE4SS-settings.ini")
+        ue4ss_mods = filetree.find("ue4ss/Mods")
+
+        if dwmapi_dll and ue4ss_dll and ue4ss_ini and ue4ss_mods:
+            filetree.move(dwmapi_dll, BIN_DIR + "/dwmapi.dll")
+            filetree.move(ue4ss_dll, PAK_DIR + "/UE4SS.dll")
+            filetree.move(ue4ss_ini, PAK_DIR + "/UE4SS-settings.ini")
+            filetree.move(ue4ss_mods, PAK_DIR + "/Mods")
             return filetree
 
+        # Filter out 'custom.txt' files and copy them along with their directory contents
+        custom_files = [f for f in filetree if f.name() == "custom.txt"]
+        for custom_file in custom_files:
+            parent_dir = custom_file.parent()
+            for entry in parent_dir:
+                if entry not in already_copied and entry.name() != "custom.txt":
+                    log(f"Moving file: {entry.name()}")
+                    filetree.move(entry, entry)
+                    already_copied.append(entry)
+
         # Handle LuaMods, LogicMods, and other files
-        lua_mod_dir = ""
-        lua_shared_copy = False
         lua_mod_name = ""
+        lua_shared_copy = False
 
-        for file in filetree:
-            if file in already_copied:
-                continue
-
-            file_dir = file.parent()
-            base_dir = file_dir.name()
-
-            if base_dir.lower() in ["luamods", "luamod"]:
-                lua_mod_name = file_dir.parent().name()
-            else:
-                lua_mod_name = base_dir
-
-            if file.name() == "enabled.txt":
-                lua_mod_dir = file_dir
+        # Handle enabled.txt logic for LuaMods
+        enabled_txt = filetree.find("enabled.txt")
+        if enabled_txt:
+            log(f"Found enabled.txt: {enabled_txt}")
+            lua_mod_name = enabled_txt.parent().name()
+            lua_shared_copy = True
+            filetree.move(
+                enabled_txt,
+                f"{PAK_DIR}/LuaMods/{lua_mod_name}/enabled.txt",
+            )
+            scripts_dir = enabled_txt.parent().find("Scripts")
+            if scripts_dir:
+                log(f"Moving Scripts directory for {lua_mod_name}")
                 filetree.move(
-                    file_dir.find("enabled.txt"),
-                    f"IntoTheRadius2/Content/Paks/LuaMods/{lua_mod_name}/enabled.txt",
-                    mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS,
+                    scripts_dir,
+                    f"{PAK_DIR}/LuaMods/{lua_mod_name}/Scripts",
                 )
+            shared_dir = enabled_txt.parent().find("Shared")
+            if shared_dir:
+                log(f"Moving Shared directory for {lua_mod_name}")
                 filetree.move(
-                    file_dir.find("Scripts"),
-                    f"IntoTheRadius2/Content/Paks/LuaMods/{lua_mod_name}/Scripts",
-                    mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS,
+                    shared_dir,
+                    f"{PAK_DIR}/LuaMods/shared/{lua_mod_name}",
                 )
-                continue
 
-            if (
-                base_dir.lower() == "shared"
-                and file.name().endswith(".lua")
-                and not lua_shared_copy
-            ):
-                lua_shared_copy = True
-                lua_mod_name = (
-                    file_dir.parent().name()
-                    if lua_mod_name == "shared"
-                    else "ITR2-Common"
-                )
-                filetree.move(
-                    file_dir,
-                    f"IntoTheRadius2/Content/Paks/LuaMods/shared/{lua_mod_name}",
-                    mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS,
-                )
-                continue
-
-            ## WORKING-ish
-            # Handle .pak, .ucas, .utoc files
-            if file.name().endswith((".pak", ".ucas", ".utoc")):
-                parent_folder = ""
-                if file_dir.parent():
-                    parent_folder = file_dir.parent().name()
-                mod_name = (
-                    file_dir.parent().parent().name()
-                    if parent_folder == "LogicMods"
-                    else parent_folder
-                )
-                print(f"PARENT FOLDER: {parent_folder}")
-                if parent_folder == "LogicMods":
-                    print(
-                        f"Copying {file} to IntoTheRadius2/Content/Paks/LogicMods/{mod_name}/{file.name()}"
-                    )
-                    filetree.move(
-                        file,
-                        f"IntoTheRadius2/Content/Paks/LogicMods/{mod_name}/{file.name()}",
-                        mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS,
-                    )
-                else:
-                    print(
-                        f"Copying {file} to IntoTheRadius2/Content/Paks/Mods/{mod_name}/{file.name()}"
-                    )
-                    filetree.move(
-                        file,
-                        f"IntoTheRadius2/Content/Paks/Mods/{mod_name}/{file.name()}",
-                        mobase.IFileTree.InsertPolicy.FAIL_IF_EXISTS,
-                    )
+        for f in filetree:
+            log(f)
 
         return filetree
 
