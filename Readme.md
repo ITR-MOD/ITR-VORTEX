@@ -2,6 +2,10 @@
 
 <small>Notice: this readme was made with the aid of chatgpt</small>
 
+<small>Notice2: this branch is for the in-dev modorganizer2 addon, both files will exist next to eachother</small>
+- mo2-extension is a wip plugin
+- intotheradius.py is a game_handler
+
 ### Vortex Extension for Mod Management
 
 This guide explains how to manage mods for *Into the Radius 2* using the Vortex extension. It covers both installing UE4SS and packaging mods to ensure compatibility.

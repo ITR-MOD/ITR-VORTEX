@@ -63,7 +63,7 @@ async function copyFile(source, destination) {
 }
 
 async function prepareForModding(discovery) {
-	log('debug', "["+GAME_SHORT_NAME+" [SETUP] Preparing for modding");
+	log('debug', "[" + GAME_SHORT_NAME + " [SETUP] Preparing for modding");
 
 	// Ensure writable directories exist for mods
 	await Promise.all([
@@ -81,7 +81,7 @@ async function prepareForModding(discovery) {
 	for (const file of filesToCopy) {
 		await copyFile(file.src, file.dest);
 	}
-	log('debug', "["+GAME_SHORT_NAME+" [SETUP] Copied required files");
+	log('debug', "[" + GAME_SHORT_NAME + " [SETUP] Copied required files");
 }
 
 /**
@@ -91,7 +91,7 @@ async function prepareForModding(discovery) {
  */
 function isFomod(files) {
 	if (files.some(f => path.basename(f) === 'moduleconfig.xml')) {
-		log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Detected FOMOD");
+		log('debug', "[" + GAME_SHORT_NAME + " [SUPPORT] Detected FOMOD");
 		return true;
 	}
 	return false;
@@ -105,7 +105,7 @@ function isFomod(files) {
  * @returns {Promise<Object>} Supported status and required files.
  */
 function testSupportedContent(files, gameId) {
-	log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Testing supported content");
+	log('debug', "[" + GAME_SHORT_NAME + " [SUPPORT] Testing supported content");
 
 	// Skip unsupported games or FOMOD configurations
 	if ((GAME_NEXUS_ID !== gameId) || isFomod(files)) {
@@ -133,10 +133,10 @@ function testSupportedContent(files, gameId) {
 	let isCustomFormat = files.some(f => path.basename(f) === 'custom-full.txt') || files.some(f => path.basename(f) === 'custom.txt');
 
 	// Log the detected type of supported content
-	if (isUE4SS) log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Supported content [UE4SS]");
-	if (isLuaMod) log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Supported content [LUA]");
-	if (isPakMod) log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Supported content [PAK]");
-	if (isCustomFormat) log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Supported content [CUSTOM]");
+	if (isUE4SS) log('debug', "[" + GAME_SHORT_NAME + " [SUPPORT] Supported content [UE4SS]");
+	if (isLuaMod) log('debug', "[" + GAME_SHORT_NAME + " [SUPPORT] Supported content [LUA]");
+	if (isPakMod) log('debug', "[" + GAME_SHORT_NAME + " [SUPPORT] Supported content [PAK]");
+	if (isCustomFormat) log('debug', "[" + GAME_SHORT_NAME + " [SUPPORT] Supported content [CUSTOM]");
 
 	return Promise.resolve({
 		supported: isUE4SS || isLuaMod || isPakMod || isCustomFormat,
@@ -153,7 +153,7 @@ function testSupportedContent(files, gameId) {
 function installContent(files) {
 	let instructions = [];
 	let alreadyCopied = [];
-	log('debug', "["+GAME_SHORT_NAME+" [INSTALL] Files:", files);
+	log('debug', "[" + GAME_SHORT_NAME + " [INSTALL] Files:", files);
 
 	// Handle custom mod format
 	const customFiles = files.filter(f => path.basename(f) === 'custom.txt');
@@ -178,7 +178,7 @@ function installContent(files) {
 
 	// Handle UE4SS mods
 	if (files.some(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss')) {
-		log('debug', "["+GAME_SHORT_NAME+" [INSTALL] Copying UE4SS.dll, UE4SS-settings.ini, and Mods to root directory");
+		log('debug', "[" + GAME_SHORT_NAME + " [INSTALL] Copying UE4SS.dll, UE4SS-settings.ini, and Mods to root directory");
 		instructions.push(
 			{ type: 'copy', source: files.find(f => path.basename(f) === 'dwmapi.dll'), destination: path.join(binDir, 'dwmapi.dll') },
 			{ type: 'copy', source: files.find(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss'), destination: path.join(pakDir, 'UE4SS.dll') },
@@ -196,15 +196,15 @@ function installContent(files) {
 		if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
 
 		if (alreadyCopied.includes(f)) {
-			log('debug', `[`+GAME_SHORT_NAME+` [INSTALL] Skipping already copied file: ${f}`);
+			log('debug', `[` + GAME_SHORT_NAME + ` [INSTALL] Skipping already copied file: ${f}`);
 			continue;
 		}
 
 		// Determine Lua Mod Name based on directory structure (if applicable)
 		const fileDir = path.dirname(f);
 		const baseDir = path.basename(fileDir);
-		log('debug', `[`+GAME_SHORT_NAME+` [INSTALL] Base directory: ${baseDir}`);
-		log('debug', `[`+GAME_SHORT_NAME+` [INSTALL] File directory: ${fileDir}`);
+		log('debug', `[` + GAME_SHORT_NAME + ` [INSTALL] Base directory: ${baseDir}`);
+		log('debug', `[` + GAME_SHORT_NAME + ` [INSTALL] File directory: ${fileDir}`);
 
 		// Check if the file is inside a LuaMods or related directory
 		if (['luamods', 'luamod'].includes(baseDir.toLowerCase())) {
@@ -216,7 +216,7 @@ function installContent(files) {
 		// Check for 'enabled.txt'
 		if (path.basename(f) === 'enabled.txt') {
 			luaModDir = fileDir;
-			log('debug', `[`+GAME_SHORT_NAME+` [LUA] ${f} to ${path.join('LuaMods', luaModName, 'enabled.txt')}`);
+			log('debug', `[` + GAME_SHORT_NAME + ` [LUA] ${f} to ${path.join('LuaMods', luaModName, 'enabled.txt')}`);
 			instructions.push(
 				{
 					type: 'copy',
@@ -240,7 +240,7 @@ function installContent(files) {
 				luaModName = parentFolder === '' ? 'ITR2-Common' : parentFolder;
 			}
 
-			log('debug', `[`+GAME_SHORT_NAME+` [LUA] ${f} to ${path.join('LuaMods', 'shared', luaModName)}`);
+			log('debug', `[` + GAME_SHORT_NAME + ` [LUA] ${f} to ${path.join('LuaMods', 'shared', luaModName)}`);
 			instructions.push({
 				type: 'copy',
 				source: path.dirname(f),
@@ -256,7 +256,7 @@ function installContent(files) {
 
 			if (parentFolder === 'LogicMods') {
 				modName = path.basename(path.dirname(path.dirname(f)));
-				log('debug', `[`+GAME_SHORT_NAME+` [BP] ${f} to ${path.join("LogicMods", modName, path.basename(f))}`);
+				log('debug', `[` + GAME_SHORT_NAME + ` [BP] ${f} to ${path.join("LogicMods", modName, path.basename(f))}`);
 				instructions.push({
 					type: 'copy',
 					source: f,
@@ -264,7 +264,7 @@ function installContent(files) {
 				});
 			} else {
 				modName = path.basename(path.dirname(f));
-				log('debug', `[`+GAME_SHORT_NAME+` [PAK] ${f} to ${path.join("Mods", modName, path.basename(f))}`);
+				log('debug', `[` + GAME_SHORT_NAME + ` [PAK] ${f} to ${path.join("Mods", modName, path.basename(f))}`);
 				instructions.push({
 					type: 'copy',
 					source: f,

@@ -1,0 +1,8 @@
+ITR1.jpg, ITR1-icon.png
+    https://www.indiedb.com/games/into-the-radius-vr/presskit
+ITR2.jpg
+    https://shared.steamstatic.com/store_item_assets/steam/apps/2307350/header.jpg
+ITR2-icon.png
+    GameFiles
+        /IntoTheRadius2/Content/ITR2/Art/UI/Textures/S_UNPSC_Logo
+        Shadow effect applied by Daedreus/Xaeleus
