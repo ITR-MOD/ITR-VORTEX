@@ -13,6 +13,12 @@ def log(msg):
     print(msg, file=sys.stderr)
 
 
+def fsParent(file: mobase.FileTreeEntry) -> mobase.FileTreeEntry:
+    if file.parent() is None:
+        return ""
+    return file.parent()
+
+
 class IntoTheRadius2ModDataChecker(mobase.ModDataChecker):
     def __init__(self):
         super().__init__()
