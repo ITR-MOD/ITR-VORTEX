@@ -5,7 +5,7 @@ import mobase
 from ..basic_game import BasicGame
 
 
-class IntoTheRadiusModDataChecker(mobase.ModDataChecker):
+class IntoTheRadius2ModDataChecker(mobase.ModDataChecker):
     def __init__(self):
         super().__init__()
 
@@ -45,16 +45,16 @@ class IntoTheRadiusModDataChecker(mobase.ModDataChecker):
         return filetree
 
 
-class IntoTheRadiusGame(BasicGame):
-    Name = "Into the Radius 2 Support Plugin"
+class IntoTheRadius2Game(BasicGame):
+    Name = "Into The Radius 2 Support Plugin"
     Author = "MerithXYZ"
     Version = "0.3.2"
 
-    GameName = "Into the Radius 2"
-    GameShortName = "intotheradiusvr"
-    GameNexusName = "intotheradiusvr"
-    GameSteamId = 1012790
-    GameBinary = "IntoTheRadius.exe"
+    GameName = "Into The Radius 2"
+    GameShortName = "intotheradius2"
+    GameNexusName = "intotheradius2"
+    GameSteamId = 2307350
+    GameBinary = "IntoTheRadius2.exe"
     GameDataPath = ""
     GameDocumentsDirectory = "%GAME_PATH%"
     GameSavesDirectory = "%GAME_PATH%/Save"
@@ -66,5 +66,5 @@ class IntoTheRadiusGame(BasicGame):
 
     def init(self, organizer: mobase.IOrganizer):
         super().init(organizer)
-        self._register_feature(IntoTheRadiusModDataChecker())
+        self._register_feature(IntoTheRadius2ModDataChecker())
         return True

@@ -3,7 +3,7 @@ const { fs, log, util, handlers } = require('vortex-api');
 
 const GAME_NEXUS_ID = 'intotheradius2';
 const GAME_STEAM_ID = '2307350';
-const GAME_NAME = 'Into the Radius 2'
+const GAME_NAME = 'Into The Radius 2'
 const VALID_EXTENSIONS = ['.pak', '.utoc', '.ucas', '.lua', '.ini', '.txt', '.dll'];
 
 var pakDir = path.join('IntoTheRadius2', 'Content', 'Paks');

@@ -9,7 +9,7 @@ itr1-vortex:
 	-rm -f game-intotheradiusvr-vortex.zip
 	sed -i "s/\.png/\.jpg/g" index.js
 	sed -i "s/ITR2/ITR1/g" index.js
-	sed -i "s/Into the Radius 2/Into The Radius/g" index.js
+	sed -i "s/Into The Radius 2/Into The Radius/g" index.js
 	sed -i "s/Into The Radius 2/Into The Radius/g" info.json
 	sed -i "s/IntoTheRadius2/IntoTheRadius/g" index.js
 	sed -i "s/intotheradius2/intotheradiusvr/g" index.js
@@ -20,7 +20,7 @@ itr2-vortex:
 	-rm -f game-intotheradius2-vortex.zip
 	sed -i "s/\.jpg/\.png/g" index.js
 	sed -i "s/ITR1/ITR2/g" index.js
-	sed -i "s/Into The Radius/Into the Radius 2/g" index.js
+	sed -i "s/Into The Radius/Into The Radius 2/g" index.js
 	sed -i "s/Into The Radius/Into The Radius 2/g" info.json
 	sed -i "s/IntoTheRadius/IntoTheRadius2/g" index.js
 	sed -i "s/intotheradiusvr/intotheradius2/g" index.js
@@ -42,7 +42,7 @@ itr1-mo2:
 itr2-mo2:
 	sed -i "s/\.jpg/\.png/g" intotheradius.py
 	sed -i "s/ITR1/ITR2/g" intotheradius.py
-	sed -i "s/Into The Radius/Into the Radius 2/g" intotheradius.py
+	sed -i "s/Into The Radius/Into The Radius 2/g" intotheradius.py
 	sed -i "s/IntoTheRadius/IntoTheRadius2/g" intotheradius.py
 	sed -i "s/intotheradiusvr/intotheradius2/g" intotheradius.py
 	sed -i "s/1012790/2307350/g" intotheradius.py
