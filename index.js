@@ -3,14 +3,15 @@ const { fs, log, util, handlers } = require('vortex-api');
 
 const GAME_NEXUS_ID = 'intotheradius2';
 const GAME_STEAM_ID = '2307350';
-const GAME_NAME = 'Into The Radius 2'
+const GAME_NAME = 'Into The Radius 2';
 const VALID_EXTENSIONS = ['.pak', '.utoc', '.ucas', '.lua', '.ini', '.txt', '.dll'];
 
+// Commonly used directories for mod files
 var pakDir = path.join('IntoTheRadius2', 'Content', 'Paks');
 var binDir = path.join('IntoTheRadius2', 'Binaries', 'Win64');
 
 function findGame() {
-	return util.GameStoreHelper.findByAppId(STEAMAPP_ID)
+	return util.GameStoreHelper.findByAppId(GAME_STEAM_ID)
 		.then(game => game.gamePath);
 }
 
@@ -39,6 +40,10 @@ function main(context) {
 	return true;
 }
 
+/**
+ * Utility function to copy a file from a source path to a destination path.
+ * Needed because Vortex API lacks this functionality.
+ */
 async function copyFile(source, destination) {
 	return new Promise((resolve, reject) => {
 		const readStream = fs.createReadStream(source);
@@ -53,7 +58,9 @@ async function copyFile(source, destination) {
 }
 
 async function prepareForModding(discovery) {
-	log('debug', "[ITR2] [INSTALL] Preparing for modding");
+	log('debug', "[ITR2] [SETUP] Preparing for modding");
+
+	// Ensure writable directories exist for mods
 	await Promise.all([
 		fs.ensureDirWritableAsync(path.join(pakDir, "Mods")),
 		fs.ensureDirWritableAsync(path.join(pakDir, "LogicMods")),
@@ -61,8 +68,7 @@ async function prepareForModding(discovery) {
 		fs.ensureDirWritableAsync(binDir),
 	]);
 
-
-	// Copy over required UE4SS files
+	// Copy required files to the game's binaries directory
 	const filesToCopy = [
 		{ src: path.join(__dirname, 'assets', 'override.txt'), dest: path.join(discovery.path, binDir, 'override.txt') },
 	];
@@ -70,21 +76,33 @@ async function prepareForModding(discovery) {
 	for (const file of filesToCopy) {
 		await copyFile(file.src, file.dest);
 	}
-	log('debug', "[ITR2] [INSTALL] Copied required files");
+	log('debug', "[ITR2] [SETUP] Copied required files");
 }
 
+/**
+ * Checks if the provided files include a FOMOD configuration.
+ * @param {string[]} files - List of files in the mod package.
+ * @returns {boolean} True if the mod contains a FOMOD.
+ */
 function isFomod(files) {
 	if (files.some(f => path.basename(f) === 'moduleconfig.xml')) {
-		log('debug', "[ITR2] [INSTALL] Detected FOMOD");
+		log('debug', "[ITR2] [SUPPORT] Detected FOMOD");
 		return true;
 	}
 	return false;
 }
 
-// Mods can either be a UE4SS Lua mod, a UE4SS Blueprint mod, or a pak mod.
+/**
+ * Determines if the provided content is supported by this game extension.
+ * Checks for specific file types and structures, such as .pak, .lua, or UE4SS mods.
+ * @param {string[]} files - List of files in the mod package.
+ * @param {string} gameId - The game ID to match against.
+ * @returns {Promise<Object>} Supported status and required files.
+ */
 function testSupportedContent(files, gameId) {
-	log('debug', "[ITR2] [INSTALL] Testing supported content");
-	// If it's not ITR2, it's already unsupported.
+	log('debug', "[ITR2] [SUPPORT] Testing supported content");
+
+	// Skip unsupported games or FOMOD configurations
 	if ((GAME_NEXUS_ID !== gameId) || isFomod(files)) {
 		return Promise.resolve({
 			supported: false,
@@ -106,51 +124,38 @@ function testSupportedContent(files, gameId) {
 
 	// If a file ends with .pak, it's either a BP or pak mod.
 	let isPakMod = files.some(f => path.extname(f).toLowerCase() === '.pak');
-
-	// Special case for UE4SS (it doesn't have the enabled.txt files)
 	let isUE4SS = files.some(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss');
-
 	let isCustomFormat = files.some(f => path.basename(f) === 'custom-full.txt') || files.some(f => path.basename(f) === 'custom.txt');
 
-	if (isUE4SS) {
-		log('debug', "[ITR2] [INSTALL] Supported content [UE4SS]");
-	}
-	if (isLuaMod) {
-		log('debug', "[ITR2] [INSTALL] Supported content [LUA]");
-	}
-	if (isPakMod) {
-		log('debug', "[ITR2] [INSTALL] Supported content [PAK]");
+	// Log the detected type of supported content
+	if (isUE4SS) log('debug', "[ITR2] [SUPPORT] Supported content [UE4SS]");
+	if (isLuaMod) log('debug', "[ITR2] [SUPPORT] Supported content [LUA]");
+	if (isPakMod) log('debug', "[ITR2] [SUPPORT] Supported content [PAK]");
+	if (isCustomFormat) log('debug', "[ITR2] [SUPPORT] Supported content [CUSTOM]");
 
-	}
-	if (isCustomFormat) {
-		log('debug', "[ITR2] [INSTALL] Supported content [CUSTOM]");
-	}
-
-	if (!isUE4SS && !isLuaMod && !isPakMod && !isCustomFormat) {
-		log('debug', "[ITR2] [INSTALL] Unsupported content");
-	}
 	return Promise.resolve({
 		supported: isUE4SS || isLuaMod || isPakMod || isCustomFormat,
 		requiredFiles: [],
 	});
 }
 
-// For UE4SS Lua mods / UE4SS:
-// Move all files (that are not .pak files) from the directory where the Mods folder is located in, to IntoTheRadius2\Binaries\Win64
-// For UE4SS BP mods:
-// Move all .pak files that are located inside a LogicMods folder, to IntoTheRadius2\Content\Paks\LogicMods
-// For Pak mods:
-// Move all .pak files that are not located inside a Logic Mods folder, to IntoTheRadius2\Content\Paks
+/**
+ * Installs the provided mod files into the appropriate directories.
+ * Handles various mod types, such as Lua mods, PAK mods, and UE4SS mods.
+ * @param {string[]} files - List of files in the mod package.
+ * @returns {Promise<Object>} Installation instructions.
+ */
 function installContent(files) {
 	let instructions = [];
 	let alreadyCopied = [];
 	log('debug', "[ITR2] [INSTALL] Files:", files);
 
-	// Handle Custom File logic
+	// Handle custom mod format
 	const customFiles = files.filter(f => path.basename(f) === 'custom.txt');
 	for (const customFile of customFiles) {
 		const customDir = path.dirname(customFile);
 		const customDirFiles = files.filter(f => path.dirname(f) === customDir);
+
 		for (const file of customDirFiles) {
 			if (!alreadyCopied.includes(file)) {
 				if (path.basename(file) === 'custom.txt') {
@@ -166,30 +171,14 @@ function installContent(files) {
 		}
 	}
 
-	// Check if ./ue4ss/UE4SS.dll exists
+	// Handle UE4SS mods
 	if (files.some(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss')) {
-		log('debug', "[ITR2] [UE4SS] Copying UE4SS.dll, UE4SS-settings.ini, and Mods to root directory");
+		log('debug', "[ITR2] [INSTALL] Copying UE4SS.dll, UE4SS-settings.ini, and Mods to root directory");
 		instructions.push(
-			{
-				type: 'copy',
-				source: files.find(f => path.basename(f) === 'dwmapi.dll'),
-				destination: path.join(binDir, 'dwmapi.dll'),
-			},
-			{
-				type: 'copy',
-				source: files.find(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss'),
-				destination: path.join(pakDir, 'UE4SS.dll'),
-			},
-			{
-				type: 'copy',
-				source: files.find(f => path.basename(f) === 'UE4SS-settings.ini' && path.dirname(f) === 'ue4ss'),
-				destination: path.join(pakDir, 'UE4SS-settings.ini'),
-			},
-			{
-				type: 'copy',
-				source: files.find(f => path.basename(f) === 'Mods' && path.dirname(f) === 'ue4ss'),
-				destination: path.join(pakDir, 'LuaMods'),
-			}
+			{ type: 'copy', source: files.find(f => path.basename(f) === 'dwmapi.dll'), destination: path.join(binDir, 'dwmapi.dll') },
+			{ type: 'copy', source: files.find(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss'), destination: path.join(pakDir, 'UE4SS.dll') },
+			{ type: 'copy', source: files.find(f => path.basename(f) === 'UE4SS-settings.ini' && path.dirname(f) === 'ue4ss'), destination: path.join(pakDir, 'UE4SS-settings.ini') },
+			{ type: 'copy', source: files.find(f => path.basename(f) === 'Mods' && path.dirname(f) === 'ue4ss'), destination: path.join(pakDir, 'LuaMods') }
 		);
 		return Promise.resolve({ instructions });
 	}
@@ -199,9 +188,7 @@ function installContent(files) {
 	let luaModName = '';
 
 	for (let f of files) {
-		// Skip files that do not have valid extensions
 		if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
-		log('debug', `[ITR2] [INSTALL] Checking ${f}`);
 
 		if (alreadyCopied.includes(f)) {
 			log('debug', `[ITR2] [INSTALL] Skipping already copied file: ${f}`);
