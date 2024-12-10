@@ -164,7 +164,7 @@ function installContent(files) {
 				instructions.push({
 					type: 'copy',
 					source: file,
-					destination: path.join(pakDir, file),
+					destination: path.join(file),
 				});
 				alreadyCopied.push(file);
 			}
