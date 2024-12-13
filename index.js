@@ -1,14 +1,19 @@
 const path = require('path');
 const { fs, log, util, handlers } = require('vortex-api');
 
-const GAME_NEXUS_ID = 'intotheradius2';
+const GAME_DISPLAY_NAME = 'Into the Radius 2';
+const GAME_INTERNAL_ID = 'IntoTheRadius2';
+const GAME_EXECUTABLE = 'IntoTheRadius2.exe';
 const GAME_STEAM_ID = '2307350';
-const GAME_NAME = 'Into the Radius 2';
-const VALID_EXTENSIONS = ['.pak', '.utoc', '.ucas', '.lua', '.ini', '.txt', '.dll'];
+const GAME_SHORT_NAME = 'ITR2';
+
+// Derivable Constants
+var GAME_NEXUS_ID = GAME_INTERNAL_ID.toLowerCase();
 
 // Commonly used directories for mod files
-var pakDir = path.join('IntoTheRadius2', 'Content', 'Paks');
-var binDir = path.join('IntoTheRadius2', 'Binaries', 'Win64');
+var pakDir = path.join(GAME_INTERNAL_ID, 'Content', 'Paks');
+var binDir = path.join(GAME_INTERNAL_ID, 'Binaries', 'Win64');
+const VALID_EXTENSIONS = ['.pak', '.utoc', '.ucas', '.lua', '.ini', '.txt', '.dll'];
 
 function findGame() {
 	return util.GameStoreHelper.findByAppId(GAME_STEAM_ID)
@@ -18,15 +23,15 @@ function findGame() {
 function main(context) {
 	context.registerGame({
 		id: GAME_NEXUS_ID,
-		name: GAME_NAME,
+		name: GAME_DISPLAY_NAME,
 		mergeMods: true,
 		queryPath: findGame,
 		supportedTools: [],
 		queryModPath: () => './',
-		logo: 'assets/ITR2.jpg',
-		executable: () => 'IntoTheRadius2.exe',
+		logo: `assets/${GAME_SHORT_NAME}.jpg`,
+		executable: () => GAME_EXECUTABLE,
 		requiredFiles: [
-			'IntoTheRadius2.exe'
+			GAME_EXECUTABLE
 		],
 		setup: prepareForModding,
 		environment: {
@@ -36,7 +41,7 @@ function main(context) {
 			steamAppId: GAME_STEAM_ID,
 		},
 	});
-	context.registerInstaller('intotheradius2-mod', 25, testSupportedContent, installContent);
+	context.registerInstaller(`${GAME_NEXUS_ID}-mod`, 25, testSupportedContent, installContent);
 	return true;
 }
 
@@ -58,7 +63,7 @@ async function copyFile(source, destination) {
 }
 
 async function prepareForModding(discovery) {
-	log('debug', "[ITR2] [SETUP] Preparing for modding");
+	log('debug', "["+GAME_SHORT_NAME+" [SETUP] Preparing for modding");
 
 	// Ensure writable directories exist for mods
 	await Promise.all([
@@ -76,7 +81,7 @@ async function prepareForModding(discovery) {
 	for (const file of filesToCopy) {
 		await copyFile(file.src, file.dest);
 	}
-	log('debug', "[ITR2] [SETUP] Copied required files");
+	log('debug', "["+GAME_SHORT_NAME+" [SETUP] Copied required files");
 }
 
 /**
@@ -86,7 +91,7 @@ async function prepareForModding(discovery) {
  */
 function isFomod(files) {
 	if (files.some(f => path.basename(f) === 'moduleconfig.xml')) {
-		log('debug', "[ITR2] [SUPPORT] Detected FOMOD");
+		log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Detected FOMOD");
 		return true;
 	}
 	return false;
@@ -100,7 +105,7 @@ function isFomod(files) {
  * @returns {Promise<Object>} Supported status and required files.
  */
 function testSupportedContent(files, gameId) {
-	log('debug', "[ITR2] [SUPPORT] Testing supported content");
+	log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Testing supported content");
 
 	// Skip unsupported games or FOMOD configurations
 	if ((GAME_NEXUS_ID !== gameId) || isFomod(files)) {
@@ -128,10 +133,10 @@ function testSupportedContent(files, gameId) {
 	let isCustomFormat = files.some(f => path.basename(f) === 'custom-full.txt') || files.some(f => path.basename(f) === 'custom.txt');
 
 	// Log the detected type of supported content
-	if (isUE4SS) log('debug', "[ITR2] [SUPPORT] Supported content [UE4SS]");
-	if (isLuaMod) log('debug', "[ITR2] [SUPPORT] Supported content [LUA]");
-	if (isPakMod) log('debug', "[ITR2] [SUPPORT] Supported content [PAK]");
-	if (isCustomFormat) log('debug', "[ITR2] [SUPPORT] Supported content [CUSTOM]");
+	if (isUE4SS) log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Supported content [UE4SS]");
+	if (isLuaMod) log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Supported content [LUA]");
+	if (isPakMod) log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Supported content [PAK]");
+	if (isCustomFormat) log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Supported content [CUSTOM]");
 
 	return Promise.resolve({
 		supported: isUE4SS || isLuaMod || isPakMod || isCustomFormat,
@@ -148,7 +153,7 @@ function testSupportedContent(files, gameId) {
 function installContent(files) {
 	let instructions = [];
 	let alreadyCopied = [];
-	log('debug', "[ITR2] [INSTALL] Files:", files);
+	log('debug', "["+GAME_SHORT_NAME+" [INSTALL] Files:", files);
 
 	// Handle custom mod format
 	const customFiles = files.filter(f => path.basename(f) === 'custom.txt');
@@ -173,7 +178,7 @@ function installContent(files) {
 
 	// Handle UE4SS mods
 	if (files.some(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss')) {
-		log('debug', "[ITR2] [INSTALL] Copying UE4SS.dll, UE4SS-settings.ini, and Mods to root directory");
+		log('debug', "["+GAME_SHORT_NAME+" [INSTALL] Copying UE4SS.dll, UE4SS-settings.ini, and Mods to root directory");
 		instructions.push(
 			{ type: 'copy', source: files.find(f => path.basename(f) === 'dwmapi.dll'), destination: path.join(binDir, 'dwmapi.dll') },
 			{ type: 'copy', source: files.find(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss'), destination: path.join(pakDir, 'UE4SS.dll') },
@@ -191,15 +196,15 @@ function installContent(files) {
 		if (!VALID_EXTENSIONS.includes(path.extname(f).toLowerCase())) continue;
 
 		if (alreadyCopied.includes(f)) {
-			log('debug', `[ITR2] [INSTALL] Skipping already copied file: ${f}`);
+			log('debug', `[`+GAME_SHORT_NAME+` [INSTALL] Skipping already copied file: ${f}`);
 			continue;
 		}
 
 		// Determine Lua Mod Name based on directory structure (if applicable)
 		const fileDir = path.dirname(f);
 		const baseDir = path.basename(fileDir);
-		log('debug', `[ITR2] [INSTALL] Base directory: ${baseDir}`);
-		log('debug', `[ITR2] [INSTALL] File directory: ${fileDir}`);
+		log('debug', `[`+GAME_SHORT_NAME+` [INSTALL] Base directory: ${baseDir}`);
+		log('debug', `[`+GAME_SHORT_NAME+` [INSTALL] File directory: ${fileDir}`);
 
 		// Check if the file is inside a LuaMods or related directory
 		if (['luamods', 'luamod'].includes(baseDir.toLowerCase())) {
@@ -211,7 +216,7 @@ function installContent(files) {
 		// Check for 'enabled.txt'
 		if (path.basename(f) === 'enabled.txt') {
 			luaModDir = fileDir;
-			log('debug', `[ITR2] [LUA] ${f} to ${path.join('LuaMods', luaModName, 'enabled.txt')}`);
+			log('debug', `[`+GAME_SHORT_NAME+` [LUA] ${f} to ${path.join('LuaMods', luaModName, 'enabled.txt')}`);
 			instructions.push(
 				{
 					type: 'copy',
@@ -235,7 +240,7 @@ function installContent(files) {
 				luaModName = parentFolder === '' ? 'ITR2-Common' : parentFolder;
 			}
 
-			log('debug', `[ITR2] [LUA] ${f} to ${path.join('LuaMods', 'shared', luaModName)}`);
+			log('debug', `[`+GAME_SHORT_NAME+` [LUA] ${f} to ${path.join('LuaMods', 'shared', luaModName)}`);
 			instructions.push({
 				type: 'copy',
 				source: path.dirname(f),
@@ -251,7 +256,7 @@ function installContent(files) {
 
 			if (parentFolder === 'LogicMods') {
 				modName = path.basename(path.dirname(path.dirname(f)));
-				log('debug', `[ITR2] [BP] ${f} to ${path.join("LogicMods", modName, path.basename(f))}`);
+				log('debug', `[`+GAME_SHORT_NAME+` [BP] ${f} to ${path.join("LogicMods", modName, path.basename(f))}`);
 				instructions.push({
 					type: 'copy',
 					source: f,
@@ -259,7 +264,7 @@ function installContent(files) {
 				});
 			} else {
 				modName = path.basename(path.dirname(f));
-				log('debug', `[ITR2] [PAK] ${f} to ${path.join("Mods", modName, path.basename(f))}`);
+				log('debug', `[`+GAME_SHORT_NAME+` [PAK] ${f} to ${path.join("Mods", modName, path.basename(f))}`);
 				instructions.push({
 					type: 'copy',
 					source: f,
