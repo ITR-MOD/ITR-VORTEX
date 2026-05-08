@@ -184,23 +184,37 @@ function installContent(files) {
 	const upluginFiles = files.filter(f => path.extname(f).toLowerCase() === '.uplugin');
 	for (const upluginFile of upluginFiles) {
 		const upluginDir = path.dirname(upluginFile);
-		const baseName = path.basename(upluginFile, '.uplugin');
-		const modName = path.basename(upluginDir);
-		const smlExts = ['.pak', '.ucas', '.utoc', '.uplugin'];
+		const modName = (upluginDir === '.' || upluginDir === '')
+			? path.basename(upluginFile, '.uplugin')
+			: path.basename(upluginDir);
+		const contentDir = path.join(upluginDir, 'Content');
+		const pakExts = ['.pak', '.ucas', '.utoc'];
 
-		const smlFiles = files.filter(f =>
-			path.dirname(f) === upluginDir &&
-			smlExts.includes(path.extname(f).toLowerCase()) &&
-			path.basename(f, path.extname(f)) === baseName
+		// Find pak/ucas/utoc files in the same dir as .uplugin or in its Content subdirectory
+		const smlPakFiles = files.filter(f =>
+			pakExts.includes(path.extname(f).toLowerCase()) &&
+			(path.dirname(f) === upluginDir || path.dirname(f) === contentDir)
 		);
 
-		for (const smlFile of smlFiles) {
+		// Deploy the .uplugin file
+		if (!alreadyCopied.includes(upluginFile)) {
+			log('debug', `[`+GAME_SHORT_NAME+` [SML] ${upluginFile} to ${path.join(modsDir, modName, path.basename(upluginFile))}`);
+			instructions.push({
+				type: 'copy',
+				source: upluginFile,
+				destination: path.join(modsDir, modName, path.basename(upluginFile)),
+			});
+			alreadyCopied.push(upluginFile);
+		}
+
+		// Deploy pak/ucas/utoc files to Content subdirectory
+		for (const smlFile of smlPakFiles) {
 			if (!alreadyCopied.includes(smlFile)) {
-				log('debug', `[`+GAME_SHORT_NAME+` [SML] ${smlFile} to ${path.join(modsDir, modName, path.basename(smlFile))}`);
+				log('debug', `[`+GAME_SHORT_NAME+` [SML] ${smlFile} to ${path.join(modsDir, modName, 'Content', path.basename(smlFile))}`);
 				instructions.push({
 					type: 'copy',
 					source: smlFile,
-					destination: path.join(modsDir, modName, path.basename(smlFile)),
+					destination: path.join(modsDir, modName, 'Content', path.basename(smlFile)),
 				});
 				alreadyCopied.push(smlFile);
 			}
