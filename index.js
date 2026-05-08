@@ -13,7 +13,8 @@ var GAME_NEXUS_ID = GAME_INTERNAL_ID.toLowerCase();
 // Commonly used directories for mod files
 var pakDir = path.join(GAME_INTERNAL_ID, 'Content', 'Paks');
 var binDir = path.join(GAME_INTERNAL_ID, 'Binaries', 'Win64');
-const VALID_EXTENSIONS = ['.pak', '.utoc', '.ucas', '.lua', '.ini', '.txt', '.dll'];
+var modsDir = path.join(GAME_INTERNAL_ID, 'Content', 'Mods');
+const VALID_EXTENSIONS = ['.pak', '.utoc', '.ucas', '.uplugin', '.lua', '.ini', '.txt', '.dll'];
 
 function findGame() {
 	return util.GameStoreHelper.findByAppId(GAME_STEAM_ID)
@@ -71,6 +72,7 @@ async function prepareForModding(discovery) {
 		fs.ensureDirWritableAsync(path.join(pakDir, "LogicMods")),
 		fs.ensureDirWritableAsync(path.join(pakDir, "LuaMods")),
 		fs.ensureDirWritableAsync(binDir),
+		fs.ensureDirWritableAsync(modsDir),
 	]);
 
 	// Copy required files to the game's binaries directory
@@ -131,15 +133,17 @@ function testSupportedContent(files, gameId) {
 	let isPakMod = files.some(f => path.extname(f).toLowerCase() === '.pak');
 	let isUE4SS = files.some(f => path.basename(f) === 'UE4SS.dll' && path.dirname(f) === 'ue4ss');
 	let isCustomFormat = files.some(f => path.basename(f) === 'custom-full.txt') || files.some(f => path.basename(f) === 'custom.txt');
+	let isSMLMod = files.some(f => path.extname(f).toLowerCase() === '.uplugin');
 
 	// Log the detected type of supported content
 	if (isUE4SS) log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Supported content [UE4SS]");
 	if (isLuaMod) log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Supported content [LUA]");
 	if (isPakMod) log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Supported content [PAK]");
 	if (isCustomFormat) log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Supported content [CUSTOM]");
+	if (isSMLMod) log('debug', "["+GAME_SHORT_NAME+" [SUPPORT] Supported content [SML]");
 
 	return Promise.resolve({
-		supported: isUE4SS || isLuaMod || isPakMod || isCustomFormat,
+		supported: isUE4SS || isLuaMod || isPakMod || isCustomFormat || isSMLMod,
 		requiredFiles: [],
 	});
 }
@@ -172,6 +176,33 @@ function installContent(files) {
 					destination: path.join(file),
 				});
 				alreadyCopied.push(file);
+			}
+		}
+	}
+
+	// Handle SimpleModLoader mods (.uplugin alongside .pak/.ucas/.utoc)
+	const upluginFiles = files.filter(f => path.extname(f).toLowerCase() === '.uplugin');
+	for (const upluginFile of upluginFiles) {
+		const upluginDir = path.dirname(upluginFile);
+		const baseName = path.basename(upluginFile, '.uplugin');
+		const modName = path.basename(upluginDir);
+		const smlExts = ['.pak', '.ucas', '.utoc', '.uplugin'];
+
+		const smlFiles = files.filter(f =>
+			path.dirname(f) === upluginDir &&
+			smlExts.includes(path.extname(f).toLowerCase()) &&
+			path.basename(f, path.extname(f)) === baseName
+		);
+
+		for (const smlFile of smlFiles) {
+			if (!alreadyCopied.includes(smlFile)) {
+				log('debug', `[`+GAME_SHORT_NAME+` [SML] ${smlFile} to ${path.join(modsDir, modName, path.basename(smlFile))}`);
+				instructions.push({
+					type: 'copy',
+					source: smlFile,
+					destination: path.join(modsDir, modName, path.basename(smlFile)),
+				});
+				alreadyCopied.push(smlFile);
 			}
 		}
 	}
