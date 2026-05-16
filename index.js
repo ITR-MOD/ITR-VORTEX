@@ -13,7 +13,7 @@ var GAME_NEXUS_ID = GAME_INTERNAL_ID.toLowerCase();
 // Commonly used directories for mod files
 var pakDir = path.join(GAME_INTERNAL_ID, 'Content', 'Paks');
 var binDir = path.join(GAME_INTERNAL_ID, 'Binaries', 'Win64');
-var modsDir = path.join(GAME_INTERNAL_ID, 'Content', 'Mods');
+var modsDir = path.join(GAME_INTERNAL_ID, 'Mods');
 const VALID_EXTENSIONS = ['.pak', '.utoc', '.ucas', '.uplugin', '.lua', '.ini', '.txt', '.dll'];
 
 function findGame() {
