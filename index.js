@@ -192,8 +192,7 @@ function installContent(files) {
 
 		// Find pak/ucas/utoc files in the same dir as .uplugin or in its Content subdirectory
 		const smlPakFiles = files.filter(f =>
-			pakExts.includes(path.extname(f).toLowerCase()) &&
-			(path.dirname(f) === upluginDir || path.dirname(f) === contentDir)
+    		pakExts.includes(path.extname(f).toLowerCase())
 		);
 
 		// Deploy the .uplugin file
