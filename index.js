@@ -191,14 +191,15 @@ function installContent(files) {
 		const pakExts = ['.pak', '.ucas', '.utoc'];
 
 		// Find pak/ucas/utoc files in the same dir as .uplugin or in its Content subdirectory
-		const smlPakFiles = files.filter(f =>
-			pakExts.includes(path.extname(f).toLowerCase()) &&
-			(path.dirname(f) === upluginDir || path.dirname(f) === contentDir)
-		);
+		const smlPakFiles = files.filter(f => {
+			if (!pakExts.includes(path.extname(f).toLowerCase())) return false;
+			if (upluginDir === '.' || upluginDir === '') return true;
+			const dir = path.dirname(f);
+			return dir === upluginDir || dir.startsWith(upluginDir + path.sep) || dir.startsWith(upluginDir + '/');
+		});
 
 		// Deploy the .uplugin file
 		if (!alreadyCopied.includes(upluginFile)) {
-			log('debug', `[`+GAME_SHORT_NAME+` [SML] ${upluginFile} to ${path.join(modsDir, modName, path.basename(upluginFile))}`);
 			instructions.push({
 				type: 'copy',
 				source: upluginFile,
@@ -210,11 +211,14 @@ function installContent(files) {
 		// Deploy pak/ucas/utoc files to Content subdirectory
 		for (const smlFile of smlPakFiles) {
 			if (!alreadyCopied.includes(smlFile)) {
-				log('debug', `[`+GAME_SHORT_NAME+` [SML] ${smlFile} to ${path.join(modsDir, modName, 'Content', path.basename(smlFile))}`);
+				const relativePath = (upluginDir === '.' || upluginDir === '')
+					? smlFile
+					: path.relative(upluginDir, smlFile);
+
 				instructions.push({
 					type: 'copy',
 					source: smlFile,
-					destination: path.join(modsDir, modName, 'Content', path.basename(smlFile)),
+					destination: path.join(modsDir, modName, relativePath),
 				});
 				alreadyCopied.push(smlFile);
 			}
