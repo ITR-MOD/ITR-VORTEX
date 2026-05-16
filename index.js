@@ -213,7 +213,7 @@ function installContent(files) {
 				instructions.push({
 					type: 'copy',
 					source: smlFile,
-					destination: path.join(modsDir, modName, 'Content', path.basename(smlFile)),
+					destination: path.join(modsDir, modName, smlFile),
 				});
 				alreadyCopied.push(smlFile);
 			}
