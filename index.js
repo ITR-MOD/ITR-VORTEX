@@ -13,7 +13,7 @@ var GAME_NEXUS_ID = GAME_INTERNAL_ID.toLowerCase();
 // Commonly used directories for mod files
 var pakDir = path.join(GAME_INTERNAL_ID, 'Content', 'Paks');
 var binDir = path.join(GAME_INTERNAL_ID, 'Binaries', 'Win64');
-var modsDir = path.join(GAME_INTERNAL_ID, 'Mods');
+var modsDir = path.join(GAME_INTERNAL_ID, 'Content');
 const VALID_EXTENSIONS = ['.pak', '.utoc', '.ucas', '.uplugin', '.lua', '.ini', '.txt', '.dll'];
 
 function findGame() {
@@ -192,7 +192,8 @@ function installContent(files) {
 
 		// Find pak/ucas/utoc files in the same dir as .uplugin or in its Content subdirectory
 		const smlPakFiles = files.filter(f =>
-    		pakExts.includes(path.extname(f).toLowerCase())
+			pakExts.includes(path.extname(f).toLowerCase()) &&
+			(path.dirname(f) === upluginDir || path.dirname(f) === contentDir)
 		);
 
 		// Deploy the .uplugin file
@@ -213,7 +214,7 @@ function installContent(files) {
 				instructions.push({
 					type: 'copy',
 					source: smlFile,
-					destination: path.join(modsDir, modName, smlFile),
+					destination: path.join(modsDir, modName, 'Content', path.basename(smlFile)),
 				});
 				alreadyCopied.push(smlFile);
 			}
